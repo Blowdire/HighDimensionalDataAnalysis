@@ -1,0 +1,7 @@
+✖ Install the styler package in order to use `style = TRUE`.
+running: bash  -c 'echo "Hello Bash!";
+pwd;
+ls | head;'
+Building shared library for Rcpp code chunk...
+ld: warning: -undefined dynamic_lookup may not work with chained fixups
+Output that would normally be lost
