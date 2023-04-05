@@ -1,95 +1,123 @@
-This template demonstrates many of the bells and whistles of the `reprex::reprex_document()` output format. The YAML sets many options to non-default values, such as using `#;-)` as the comment in front of output.
+# Encoding Categorical Predictors
 
-## Code style
+Agazzi Ruben <br />
+Davide Dell’Orto <br />
+Hellem Carrasco <br />
 
-Since `style` is `TRUE`, this difficult-to-read code (look at the `.Rmd` source file) will be restyled according to the Tidyverse style guide when it’s rendered. Whitespace rationing is not in effect!
+## Abstract
 
-``` r
-x=1;y=2;z=x+y;z
-#;-) [1] 3
-```
+This is a comprehensive analysis of how categorical, and more general non numerical data can be encoded into a numerical form, in order to be used by all types of models.
+In particular will be addressed how to manage unordered and ordered categorical data, and also how to extract features from textual data.
 
-## Quiet tidyverse
+## Summary
 
-The tidyverse meta-package is quite chatty at startup, which can be very useful in exploratory, interactive work. It is often less useful in a reprex, so by default, we suppress this.
+## Chapter 1
 
-However, when `tidyverse_quiet` is `FALSE`, the rendered result will include a tidyverse startup message about package versions and function masking.
+Handling categorial data is a very important step during the implementation of a statistical or machine learning model. Most of the models does not accept categorical data, but only numerical data. The only models that accepts this type of data are tree-based model which can handle this type of data by default.
 
-``` r
-library(tidyverse)
-#;-) ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-#;-) ✔ dplyr     1.1.1     ✔ readr     2.1.4
-#;-) ✔ forcats   1.0.0     ✔ stringr   1.5.0
-#;-) ✔ ggplot2   3.4.2     ✔ tibble    3.2.1
-#;-) ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
-#;-) ✔ purrr     1.0.1     
-#;-) ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-#;-) ✖ dplyr::filter() masks stats::filter()
-#;-) ✖ dplyr::lag()    masks stats::lag()
-#;-) ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
-```
+### Dummy Variables
 
-## Chunks in languages other than R
+The most basic approach used for handling unordered categorical data, consists in creating dummy or indicator variables. The most common form is creating binary dummy variables for categorical predictors: if the categorical predictor can assume 3 values we can create 2 binary dummy variables where value 1 will be, for example, d1=1 and d2=0, value 2 will be d1=0 and d2=1 and where value 3 will be d1=0 and d2=0. We could also represent this type of categorical data with 3 dummy variables, but this approach could lead, sometimes, to problems: some models, in order to estimate their parameters, needs to invert the matrix $(X'X)$, if the model has an intercept an additional column of one for all columns is added to the $X$ matrix; if we add the new 3 dummy variables this will add to the previous intercept row, and this linear combination would prevent the $(X'X)$ matrix to be invertible. This is the reason why we encode $C$ different categories into $C-1$ dummy variables
 
-Remember: knitr supports many other languages than R, so you can reprex bits of code in Python, Ruby, Julia, C++, SQL, and more. Note that, in many cases, this still requires that you have the relevant external interpreter installed.
+### Code
 
-Let’s try Python!
-
-``` python
-x = 'hello, python world!'
-print(x.split(' '))
-```
-
-And bash!
-
-``` bash
-echo "Hello Bash!";
-pwd;
-ls | head;
-#;-) Hello Bash!
-#;-) /Users/rubenagazzi/Documents/universita/HighDimensionalDataAnalysis
-#;-) HighDimensionalDataAnalysis.Rproj
-#;-) Progetto.Rmd
-#;-) Progetto1.Rmd
-#;-) Progetto1_reprex.Rmd
-#;-) Progetto1_reprex_std_out_err.txt
-#;-) Report
-#;-) _cache
-#;-) templates
-```
-
-Write a function in C++, use Rcpp to wrap it and …
-
-``` cpp
-#include <Rcpp.h>
-using namespace Rcpp;
-
-// [[Rcpp::export]]
-NumericVector timesTwo(NumericVector x) {
-  return x * 2;
-}
-```
-
-then immediately call your C++ function from R!
+This piece of code shows a way of encoding the seven days of weeks into 6 dummy variables
 
 ``` r
-timesTwo(1:4)
-#;-) [1] 2 4 6 8
+library(tidymodels)
+#;-) ── Attaching packages ────────────────────────────────────── tidymodels 1.0.0 ──
+#;-) ✔ broom        1.0.4     ✔ recipes      1.0.5
+#;-) ✔ dials        1.2.0     ✔ rsample      1.1.1
+#;-) ✔ dplyr        1.1.1     ✔ tibble       3.2.1
+#;-) ✔ ggplot2      3.4.2     ✔ tidyr        1.3.0
+#;-) ✔ infer        1.0.4     ✔ tune         1.1.0
+#;-) ✔ modeldata    1.1.0     ✔ workflows    1.1.3
+#;-) ✔ parsnip      1.0.4     ✔ workflowsets 1.0.0
+#;-) ✔ purrr        1.0.1     ✔ yardstick    1.1.0
+#;-) ── Conflicts ───────────────────────────────────────── tidymodels_conflicts() ──
+#;-) ✖ purrr::discard() masks scales::discard()
+#;-) ✖ dplyr::filter()  masks stats::filter()
+#;-) ✖ dplyr::lag()     masks stats::lag()
+#;-) ✖ recipes::step()  masks stats::step()
+#;-) • Search for functions across packages at https://www.tidymodels.org/find/
+library(FeatureHashing)
+library(stringr)
+#;-) 
+#;-) Attaching package: 'stringr'
+#;-) The following object is masked from 'package:recipes':
+#;-) 
+#;-)     fixed
+library('fastDummies')
+days_of_week <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday","Friday", "Saturday")
+test_df <- data.frame(days_of_week)
+test_df <- dummy_cols(test_df, select_columns = c('days_of_week'))
+test_df = test_df[-c(5)]
 ```
 
-## Standard output and error
+![Table of encoded days of week using 6 dummy variables](./images/dummy_days_of_week_2.png)
 
-Some output that you see in an interactive session is not actually captured by rmarkdown, when that same code is executed in the context of an `.Rmd` document. When `std_out_err` is `TRUE`, `reprex::reprex_render()` uses a feature of `callr:r()` to capture such output and then injects it into the rendered result.
-
-Look for this output in a special section of the rendered document (and notice that it does not appear right here).
+## Encoding predictors mith many categories
 
 ``` r
-system2("echo", args = "Output that would normally be lost")
+library(tidymodels)
+library(FeatureHashing)
+library(stringr)
+
+options(width = 150)
+
+
+load("./Datasets/okc.RData")
+
+towns_to_sample <- c(
+  'alameda', 'belmont', 'benicia', 'berkeley', 'castro_valley', 'daly_city', 
+  'emeryville', 'fairfax', 'martinez', 'menlo_park', 'mountain_view', 'oakland', 
+  'other', 'palo_alto', 'san_francisco', 'san_leandro', 'san_mateo', 
+  'san_rafael', 'south_san_francisco', 'walnut_creek'
+)
+
+# Sampled locations from "where_town" column
+locations_sampled <- okc_train %>% dplyr::select(where_town) %>% distinct(where_town) %>% arrange(where_town)
+
+hashes <- hashed.model.matrix(
+  ~ where_town,
+  data = locations_sampled,
+  hash.size = 2^4,
+  signed.hash=FALSE,
+  create.mapping=TRUE
+)
+
+hash_mapping = hash.mapping(hashes)
+names(hash_mapping) = str_remove(names(hash_mapping), 'where_town')
+
+# Takes hash mapping, converts to dataframe, set new columns names, calculate hash over name to have original integer value, filter for selected cities 
+binary_calcs = hash_mapping %>% enframe() %>% set_names(c('town', 'column_num_16')) %>% mutate(integer_16 = hashed.value(names(hash_mapping))) %>% dplyr::filter(town %in% towns_to_sample) %>% arrange(town)
+
+hashes_df = hashes %>% 
+  as.matrix() %>%
+  as_tibble() %>%
+  bind_cols(locations_sampled) %>%
+  dplyr::rename(town = where_town) %>% 
+  dplyr::filter(town %in% towns_to_sample) %>% 
+  arrange(town)
+
+
+# Making a signed hasing version in order to prevent aliasing
+
+hashes_signed <- hashed.model.matrix(
+  ~ where_town,
+  data = locations_sampled,
+  hash.size = 2^4,
+  signed.hash=TRUE,
+  create.mapping=TRUE
+)
+hashes_df_signed = hashes_signed %>% 
+  as.matrix() %>%
+  as_tibble() %>%
+  bind_cols(locations_sampled) %>%
+  dplyr::rename(town = where_town) %>% 
+  dplyr::filter(town %in% towns_to_sample) %>% 
+  arrange(town)
 ```
-
-## Session info
-
-Because `session_info` is `TRUE`, the rendered result includes session info, even though no such code is included here in the source document.
 
 <details style="margin-bottom:10px;">
 <summary>
@@ -98,12 +126,6 @@ Standard output and standard error
 
 ``` sh
 ✖ Install the styler package in order to use `style = TRUE`.
-running: bash  -c 'echo "Hello Bash!";
-pwd;
-ls | head;'
-Building shared library for Rcpp code chunk...
-ld: warning: -undefined dynamic_lookup may not work with chained fixups
-Output that would normally be lost
 ```
 
 </details>
@@ -129,21 +151,22 @@ sessionInfo()
 #;-) [1] stats     graphics  grDevices utils     datasets  methods   base     
 #;-) 
 #;-) other attached packages:
-#;-)  [1] lubridate_1.9.2 forcats_1.0.0   stringr_1.5.0   dplyr_1.1.1    
-#;-)  [5] purrr_1.0.1     readr_2.1.4     tidyr_1.3.0     tibble_3.2.1   
-#;-)  [9] ggplot2_3.4.2   tidyverse_2.0.0
+#;-)  [1] fastDummies_1.6.3      stringr_1.5.0          FeatureHashing_0.9.1.5 yardstick_1.1.0        workflowsets_1.0.0     workflows_1.1.3       
+#;-)  [7] tune_1.1.0             tidyr_1.3.0            tibble_3.2.1           rsample_1.1.1          recipes_1.0.5          purrr_1.0.1           
+#;-) [13] parsnip_1.0.4          modeldata_1.1.0        infer_1.0.4            ggplot2_3.4.2          dplyr_1.1.1            dials_1.2.0           
+#;-) [19] scales_1.2.1           broom_1.0.4            tidymodels_1.0.0      
 #;-) 
 #;-) loaded via a namespace (and not attached):
-#;-)  [1] Rcpp_1.0.10      pillar_1.9.0     compiler_4.2.2   tools_4.2.2     
-#;-)  [5] digest_0.6.31    timechange_0.2.0 evaluate_0.20    lifecycle_1.0.3 
-#;-)  [9] gtable_0.3.3     pkgconfig_2.0.3  rlang_1.1.0      reprex_2.0.2    
-#;-) [13] cli_3.6.1        rstudioapi_0.14  yaml_2.3.7       xfun_0.38       
-#;-) [17] fastmap_1.1.1    withr_2.5.0      knitr_1.42       generics_0.1.3  
-#;-) [21] fs_1.6.1         vctrs_0.6.1      hms_1.1.3        grid_4.2.2      
-#;-) [25] tidyselect_1.2.0 glue_1.6.2       R6_2.5.1         fansi_1.0.4     
-#;-) [29] rmarkdown_2.21   tzdb_0.3.0       magrittr_2.0.3   scales_1.2.1    
-#;-) [33] htmltools_0.5.5  colorspace_2.1-0 utf8_1.2.3       stringi_1.7.12  
-#;-) [37] munsell_0.5.0
+#;-)  [1] splines_4.2.2       foreach_1.5.2       prodlim_2023.03.31  GPfit_1.0-8         yaml_2.3.7          globals_0.16.2      ipred_0.9-14       
+#;-)  [8] pillar_1.9.0        backports_1.4.1     lattice_0.20-45     glue_1.6.2          digest_0.6.31       hardhat_1.3.0       colorspace_2.1-0   
+#;-) [15] htmltools_0.5.5     Matrix_1.5-1        timeDate_4022.108   pkgconfig_2.0.3     lhs_1.1.6           DiceDesign_1.9      listenv_0.9.0      
+#;-) [22] gower_1.0.1         lava_1.7.2.1        timechange_0.2.0    generics_0.1.3      withr_2.5.0         furrr_0.3.1         nnet_7.3-18        
+#;-) [29] cli_3.6.1           survival_3.4-0      magrittr_2.0.3      evaluate_0.20       fs_1.6.1            future_1.32.0       fansi_1.0.4        
+#;-) [36] parallelly_1.35.0   MASS_7.3-58.1       class_7.3-20        tools_4.2.2         data.table_1.14.8   lifecycle_1.0.3     munsell_0.5.0      
+#;-) [43] reprex_2.0.2        compiler_4.2.2      rlang_1.1.0         grid_4.2.2          iterators_1.0.14    rstudioapi_0.14     rmarkdown_2.21     
+#;-) [50] gtable_0.3.3        codetools_0.2-18    R6_2.5.1            lubridate_1.9.2     knitr_1.42          fastmap_1.1.1       future.apply_1.10.0
+#;-) [57] utf8_1.2.3          stringi_1.7.12      parallel_4.2.2      Rcpp_1.0.10         vctrs_0.6.1         rpart_4.1.19        tidyselect_1.2.0   
+#;-) [64] xfun_0.38
 ```
 
 </details>
