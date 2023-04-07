@@ -174,6 +174,7 @@ library(caret)
 library(tidymodels)
 library(keras)
 library(doParallel)
+library(pROC)
 
 load("./Datasets/okc.RData")
 load("./Datasets/okc_other.RData")
@@ -189,7 +190,7 @@ text_features = c("n_urls", "n_hashtags", "n_mentions", "n_commas", "n_digits",
     "n_words", "n_puncts", "n_charsperword")
 
 #Specifying sentence features names.
-sentence_features = c("sent_afinn", "sent_bing", "n_polite", "n_first_person", "n_first_personp",
+sentiment_features = c("sent_afinn", "sent_bing", "n_polite", "n_first_person", "n_first_personp",
     "n_second_person", "n_second_personp", "n_third_person", "n_prepositions")
 
 # Getting data set base features names.
@@ -203,10 +204,10 @@ keyword_features = keyword_features[keyword_features != 'profile']
 #Function used to get useful statistics from data and specified model
 statistiche = function(data, lev= levels(data$obs), model = NULL){
   c(
-    twoClassSummary(data=data, lev= lev, model),
-    prSummary(data=data, lev= lev, model),
-    mnLogLoss(data=data, lev= lev, model),
-    defaultSummary(data=data, lev= lev, model)
+    twoClassSummary(data = data, lev = levels(data$obs), model),
+    prSummary(data = data, lev = levels(data$obs), model),
+    mnLogLoss(data = data, lev = levels(data$obs), model),
+    defaultSummary(data = data, lev = levels(data$obs), model)
   )
 }
 
@@ -214,7 +215,7 @@ statistiche = function(data, lev= levels(data$obs), model = NULL){
 okc_train_control = trainControl(
   method = "cv",
   classProbs = TRUE,
-  summaryFunction = statistiche,
+  summaryFunction = defaultSummary,
   returnData = FALSE,
   trim = TRUE,
   sampling = "down"
@@ -240,16 +241,133 @@ okc_control_rand$search = "random"
 
 set.seed(49)
 
-multi_layer_perceptron_keyword = train(
-  keyword_normalization,
+#multi_layer_perceptron_keyword = train(
+#  keyword_normalization,
+#  data = okc_train,
+#  method = "mlpKerasDropout",
+#  metric= "ROC",
+#  tuneLength = 20,
+#  trControl=okc_control_rand,
+#  verbose = 0,
+#  epochs = 500
+#)
+
+
+
+#Model with basic profile info
+
+basic_model =
+  recipe(Class ~ ., data=okc_train[, c('Class', base_features)]) %>% 
+  step_YeoJohnson(all_numeric()) %>%
+  step_other(where_town) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_zv(all_predictors())
+
+set.seed(49)
+
+glm_basic <- train(
+  basic_model,
   data = okc_train,
-  method = "mlpKerasDropout",
-  metric= "ROC",
-  tuneLength = 20,
-  trControl=okc_control_rand,
-  verbose = 0,
-  epochs = 500
+  method = "glm",
+  metric = "ROC",
+  trControl = okc_ctrl
 )
+basic_pred <- ncol(glm_basic$recipe$template) - 1
+
+#Model with basic text features
+text_rec <-
+  recipe(Class ~ .,
+         data = okc_train[, c("Class", base_features, text_features)]) %>%
+  step_YeoJohnson(all_numeric()) %>%
+  step_other(where_town) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_zv(all_predictors())
+
+set.seed(49)
+glm_text <- train(
+  text_rec,
+  data = okc_train,
+  method = "glm",
+  metric = "ROC",
+  trControl = okc_ctrl
+)
+
+text_pred <- ncol(glm_text$recipe$template) - 1
+
+#Model with base info, text features and keywords
+keyword_rec <-
+  recipe(Class ~ .,
+         data = okc_train[, c("Class", base_features, text_features, keyword_features)]) %>%
+  step_YeoJohnson(all_numeric()) %>%
+  step_other(where_town) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_zv(all_predictors())
+
+okc_ctrl_keep <- okc_ctrl
+okc_ctrl_keep$savePredictions <- "final"
+
+set.seed(49)
+glm_keyword <- train(
+  keyword_rec,
+  data = okc_train,
+  method = "glm",
+  metric = "ROC",
+  trControl = okc_ctrl_keep
+)
+
+keyword_pred <- ncol(glm_keyword$recipe$template) - 1
+
+#Model with base info, text features, keywords and sentiment analysis
+
+sent_rec <-
+  recipe(Class ~ .,
+         data = okc_train[, c("Class", base_features, keyword_features, sentiment_features)]) %>%
+  step_YeoJohnson(all_numeric()) %>%
+  step_other(where_town) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_zv(all_predictors())
+
+set.seed(49)
+glm_sent <- train(
+  sent_rec,
+  data = okc_train,
+  method = "glm",
+  metric = "ROC",
+  trControl = okc_ctrl
+)
+
+sent_pred <- ncol(glm_sent$recipe$template) - 1
+
+#Data collection and visualization
+features_groups <-
+  c("Basic Profile Info", "+ Simple Text Features", "+ Keywords", "+ Keywords\n+ Sentiment")
+
+glm_resamples <-
+  glm_basic$resample %>%
+  mutate(Features = "Basic Profile Info") %>%
+  bind_rows(
+    glm_text$resample %>%
+      mutate(Features = "+ Simple Text Features"),
+    glm_keyword$resample %>%
+      mutate(Features = "+ Keywords"),
+    glm_sent$resample %>%
+      mutate(Features = "+ Keywords\n+ Sentiment")
+  ) %>%
+  mutate(Features = factor(Features, levels = features_groups))
+
+glm_resamples_mean <-
+  glm_resamples %>%
+  group_by(Features) %>%
+  summarize(ROC = mean(ROC))
+glm_resamples_mean$Resample = 'Average'
+
+temp_df = glm_resamples[,-c(2,3)]
+
+full_df = rbind(glm_resamples_mean,temp_df )
+library(ggplot2)
+
+
+ggplot(data = subset(full_df, Resample != 'Average'),aes(x=Features, y=ROC, colour=Resample, group=Resample))+ geom_line() + geom_point() + geom_point(data = subset(full_df,  Resample == 'Average'),aes(x=Features, y=ROC,),color = 'black')+geom_line(data = subset(full_df,  Resample == 'Average'),size=1,aes(x=Features, y=ROC,),color = 'black')
 
 ```
 
@@ -305,7 +423,7 @@ many_stats <-
 okc_ctrl <- trainControl(
   method = "cv",
   classProbs = TRUE,
-  summaryFunction = many_stats,
+  summaryFunction = twoClassSummary,
   returnData = FALSE,
   trim = TRUE,
   sampling = "down"
@@ -329,7 +447,6 @@ keyword_norm <-
 
 okc_ctrl_rand <- okc_ctrl
 okc_ctrl_rand$search <- "random"
-
 set.seed(49)
 mlp_keyword <-
   train(
@@ -340,7 +457,7 @@ mlp_keyword <-
     tuneLength = 20,
     trControl = okc_ctrl_rand,
     verbose = 0,
-    epochs = 500
+    epochs = 10
   )
 
 ```
