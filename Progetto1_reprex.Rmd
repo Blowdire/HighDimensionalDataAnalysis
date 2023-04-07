@@ -149,4 +149,199 @@ hashes_df_signed = hashes_signed %>%
 
 ```
 
+## Features from text data
+
+```{r}
+load("./Datasets/okc.RData")
+
+stem_data = okc_sampled[okc_sampled$Class == "stem",]
+non_stem_data = okc_sampled[okc_sampled$Class != "stem",]
+result_stem = grepl("http|https", stem_data$essays)
+result_non_stem = grepl("http|https", non_stem_data$essays)
+
+number_stem_with_link = sum(result_stem)
+number_non_stem_with_link = sum(result_non_stem)
+
+prop.test(x=number_stem_with_link, n = 10000, alternative='two.sided')
+
+odds_ratio = (number_non_stem_with_link * (length(result_non_stem) - number_non_stem_with_link))/((length(result_stem) - number_stem_with_link) * number_non_stem_with_link)
+
+
+```
+
+```{r}
+library(caret)
+library(tidymodels)
+library(keras)
+library(doParallel)
+
+load("./Datasets/okc.RData")
+load("./Datasets/okc_other.RData")
+load("./Datasets/okc_binary.RData")
+load("./Datasets/okc_features.RData")
+
+# joining all pre-computed features data sets: joins basic dataset, binary dataset and basic precomputed features.
+okc_train = okc_train %>% full_join(okc_train_binary) %>%full_join(basic_features_train) %>% arrange(profile) %>% dplyr::select(-profile)
+
+# Selecting pre-computed textual features names.
+text_features = c("n_urls", "n_hashtags", "n_mentions", "n_commas", "n_digits",
+    "n_exclaims", "n_extraspaces", "n_lowers", "n_lowersp", "n_periods",
+    "n_words", "n_puncts", "n_charsperword")
+
+#Specifying sentence features names.
+sentence_features = c("sent_afinn", "sent_bing", "n_polite", "n_first_person", "n_first_personp",
+    "n_second_person", "n_second_personp", "n_third_person", "n_prepositions")
+
+# Getting data set base features names.
+base_features = names(okc_test)
+base_features = base_features[!(base_features %in% c('Class','profile','essay_length','where_state'))]
+
+#Getting pre-computed keyword features names.
+keyword_features = names(okc_train_binary)
+keyword_features = keyword_features[keyword_features != 'profile']
+
+#Function used to get useful statistics from data and specified model
+statistiche = function(data, lev= levels(data$obs), model = NULL){
+  c(
+    twoClassSummary(data=data, lev= lev, model),
+    prSummary(data=data, lev= lev, model),
+    mnLogLoss(data=data, lev= lev, model),
+    defaultSummary(data=data, lev= lev, model)
+  )
+}
+
+# used to get computational data of the models
+okc_train_control = trainControl(
+  method = "cv",
+  classProbs = TRUE,
+  summaryFunction = statistiche,
+  returnData = FALSE,
+  trim = TRUE,
+  sampling = "down"
+)
+
+# keyword normalization
+keyword_normalization = 
+  #transforms dataset to recipe object with basic and keyword features
+  recipe(Class ~.,data=okc_train[, c("Class", base_features, keyword_features)]) %>% 
+  step_YeoJohnson(all_numeric()) %>%
+  step_other(where_town) %>%
+  # Creates dummy variables when needed
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  # Remove zero variance predictors
+  step_zv(all_predictors()) %>%
+  #Centers all predictors
+  step_center(all_predictors()) %>%
+  # Scale all predictors to have a std dev equal to 1
+  step_scale(all_predictors())
+
+okc_control_rand = okc_train_control
+okc_control_rand$search = "random"
+
+set.seed(49)
+
+multi_layer_perceptron_keyword = train(
+  keyword_normalization,
+  data = okc_train,
+  method = "mlpKerasDropout",
+  metric= "ROC",
+  tuneLength = 20,
+  trControl=okc_control_rand,
+  verbose = 0,
+  epochs = 500
+)
+
+```
+
+```{r}
+library(caret)
+library(tidymodels)
+library(keras)
+library(doParallel)
+
+load("./Datasets/okc.RData")
+load("./Datasets/okc_other.RData")
+load("./Datasets/okc_binary.RData")
+load("./Datasets/okc_features.RData")
+
+okc_train <-
+  okc_train %>%
+  full_join(okc_train_binary) %>%
+  full_join(basic_features_train) %>%
+  arrange(profile) %>%
+  dplyr::select(-profile)
+
+# create feature sets
+
+basic_feat <- names(okc_test)
+basic_feat <- basic_feat[!(basic_feat %in% c("Class", "profile", "essay_length", "where_state"))]
+
+# keywords only
+
+keyword_feat <- names(okc_train_binary)
+keyword_feat <- keyword_feat[keyword_feat != "profile"]
+
+text_feat <-
+  c("n_urls", "n_hashtags", "n_mentions", "n_commas", "n_digits",
+    "n_exclaims", "n_extraspaces", "n_lowers", "n_lowersp", "n_periods",
+    "n_words", "n_puncts", "n_charsperword")
+
+sent_feat <-
+  c("sent_afinn", "sent_bing", "n_polite", "n_first_person", "n_first_personp",
+    "n_second_person", "n_second_personp", "n_third_person", "n_prepositions")
+
+# ------------------------------------------------------------------------------
+
+many_stats <-
+  function(data, lev = levels(data$obs), model = NULL) {
+    c(
+      twoClassSummary(data = data, lev = levels(data$obs), model),
+      prSummary(data = data, lev = levels(data$obs), model),
+      mnLogLoss(data = data, lev = levels(data$obs), model),
+      defaultSummary(data = data, lev = levels(data$obs), model)
+    )
+  }
+
+okc_ctrl <- trainControl(
+  method = "cv",
+  classProbs = TRUE,
+  summaryFunction = many_stats,
+  returnData = FALSE,
+  trim = TRUE,
+  sampling = "down"
+)
+
+# ------------------------------------------------------------------------------
+## First run a tensorflow model (since it cannot be run in parallel
+## via foreach)
+
+## Recipe for the keywords that normalizes the predictors at the end
+
+keyword_norm <-
+  recipe(Class ~ .,
+         data = okc_train[, c("Class", basic_feat, keyword_feat)]) %>%
+  step_YeoJohnson(all_numeric()) %>%
+  step_other(where_town) %>%
+  step_dummy(all_nominal(), -all_outcomes()) %>%
+  step_zv(all_predictors()) %>%
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors())
+
+okc_ctrl_rand <- okc_ctrl
+okc_ctrl_rand$search <- "random"
+
+set.seed(49)
+mlp_keyword <-
+  train(
+    keyword_norm,
+    data = okc_train,
+    method = "mlpKerasDropout",
+    metric = "ROC",
+    tuneLength = 20,
+    trControl = okc_ctrl_rand,
+    verbose = 0,
+    epochs = 500
+  )
+
+```
 
