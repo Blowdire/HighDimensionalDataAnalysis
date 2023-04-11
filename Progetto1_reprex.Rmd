@@ -86,7 +86,7 @@ The process of feature hashing can lead to some problems:
 
 ### Code 
 This piece of code shows how feature hashing can be done. The dataset used is the OkCupid dataset and the categorical predictor used was the _where_town_ column of the dataset.
-```{r}
+```{r eval=FALSE}
 library(tidymodels)
 library(FeatureHashing)
 library(stringr)
@@ -151,7 +151,41 @@ hashes_df_signed = hashes_signed %>%
 
 ## Features from text data
 
+Usually we can come around some textual data inside a dataset, for example a product description or a profile description. We need to find a way to extract some features from texts. One example can be searching for the presence of links inside the text. Like suggested in the book, we can make a new feature that indicates the presence of a link inside the profile description. This feature can be useful to be used to classify a profile, in order to predict if the profile belongs to a STEM or non-STEM person. With our testing dataset we found out that the profiles with a link in the description are 662, where 409 are STEM profiles and 253 are non stem profiles. The odds ratio of having a link in the STEM profiles is equal to 0.043, while the odds ratio of non-STEM profiles that have a link in the description is 0.026. This values makes us understand that the stem profiles that have a link in the description are 1.65 times higher than the non-STEM profiles with a link. To see if this proportion is reliable we made a confidence interval over the odds-ratio of profiles with link. The confidence interval at 95% have as lower bound 1.42 and as upper bound 1.96, in this case 1 is not included inside the interval, so we can say that this feature is not working only because of some random noise, but instead is a useful feature to distinguish profiles between STEM and non-STEM
+
+### Other features
+By following the previous analysis, other features can be obtained, like the presence of certain keywords, or the count itself of a specified word, the number of commas, hashtags, exclamation points, etc..
+In this case it is useful to remember that some form of preprocessing should be done when working with textual data. The preprocessing steps can consists in:
+
+#. Stop-word removal.
+#. Removal of undesired elements, like html tags and other useless parts for the feature extraction.
+#. Lemmatization or stemming in order to reduce the words to the same form, in order to accorpate the terms
+#. Making al the text lowercase to normalize it.
+#. Remove words that have a very low frequency.
+
+## Analysis on text features
+After the initial consideration about the presence of link feature and more in general of other features, we proceeded to make an analysis about the effectiveness of these features. To do so we used the different datasets, with different features inside, in order to train 4 different general linear models, in order to see how the performance is affected by the presence of different features.
+The 4 datasets sused for the training are:
+
+#. Basic Ok Cupid dataset, with profile info consisting in 160 predictors, after creating dummy variables when needed.
+#. Basic Ok Cupid dataset and text features like the number of occurences of urls, commas, exclamation points, etc.
+#. Basic Ok Cupid dataset, text features and keyword features, like the presence of the "software" term in the description.
+#. Basic Ok Cupid dataset, text features, keyword features and sentiment features, like the number of sentences, number of sentences written in first or third person, etc.
+
+### Performance evaluation
+In order to evaluate the performances of the 4 different models, we used the area under the ROC curve. The training also performs 10-Fold cross validation in order to have more precise results. In the end the performance is calculated as the average of the 10 folds performances.
+
+![Plot of performance measure of the 4 trained models using the different feature sets](./images/training_results_chapter5_6.png)
+As we can see from the plot showing the performances, adding the simple text features to the dataset improves the area under the ROC courve by a little, while adding the keywords features greatly improves the performances. Adding the sentiment analysis features, on the other hand, decreases the performance with respect to the model trained with only the simple text features and keywords features.
+
+### Other considerations
+
+Another way of extracting text features can be the implementation of tf-idf statistics to identify important words: this statistic measures the grade of importance of a word inside its context, so if is more present locally it is considered more important, and inside the global context of documents, so if a word is rare among all documents its importance is considered bigger. The good thing of tf-idf is that it can consider not only single words, but n-grams, and this could lead to find more useful features inside our textual data.
+
+### Code
+The following code contains the analysis made on the odds ratio of the presence of link feature and the training and comparison of the 4 models with different feature sets.
 ```{r}
+library(epitools)
 load("./Datasets/okc.RData")
 
 stem_data = okc_sampled[okc_sampled$Class == "stem",]
@@ -162,12 +196,21 @@ result_non_stem = grepl("http|https", non_stem_data$essays)
 number_stem_with_link = sum(result_stem)
 number_non_stem_with_link = sum(result_non_stem)
 
-prop.test(x=number_stem_with_link, n = 10000, alternative='two.sided')
 
-odds_ratio = (number_non_stem_with_link * (length(result_non_stem) - number_non_stem_with_link))/((length(result_stem) - number_stem_with_link) * number_non_stem_with_link)
+odds_stem = (number_stem_with_link ) / nrow(okc_sampled)
+odds_ratio_stem = odds_stem / (1 - odds_stem)
 
 
+odds_non_stem = (number_non_stem_with_link ) / nrow(okc_sampled)
+odds_ratio_non_stem = odds_non_stem / (1 - odds_non_stem)
+
+#Confidence interval for odds ratio
+
+odds_ratio_matrix = matrix(c(number_stem_with_link, nrow(stem_data) - number_stem_with_link, number_non_stem_with_link, nrow(non_stem_data) - number_non_stem_with_link), nrow=2, ncol= 2)
+odds_ratio_matrix
+oddsratio.wald(odds_ratio_matrix)
 ```
+
 
 ```{r}
 library(caret)
@@ -215,7 +258,7 @@ statistiche = function(data, lev= levels(data$obs), model = NULL){
 okc_train_control = trainControl(
   method = "cv",
   classProbs = TRUE,
-  summaryFunction = defaultSummary,
+  summaryFunction = statistiche,
   returnData = FALSE,
   trim = TRUE,
   sampling = "down"
@@ -270,7 +313,7 @@ glm_basic <- train(
   data = okc_train,
   method = "glm",
   metric = "ROC",
-  trControl = okc_ctrl
+  trControl = okc_train_control
 )
 basic_pred <- ncol(glm_basic$recipe$template) - 1
 
@@ -289,7 +332,7 @@ glm_text <- train(
   data = okc_train,
   method = "glm",
   metric = "ROC",
-  trControl = okc_ctrl
+  trControl = okc_train_control
 )
 
 text_pred <- ncol(glm_text$recipe$template) - 1
@@ -303,7 +346,7 @@ keyword_rec <-
   step_dummy(all_nominal(), -all_outcomes()) %>%
   step_zv(all_predictors())
 
-okc_ctrl_keep <- okc_ctrl
+okc_ctrl_keep <- okc_train_control
 okc_ctrl_keep$savePredictions <- "final"
 
 set.seed(49)
@@ -333,7 +376,7 @@ glm_sent <- train(
   data = okc_train,
   method = "glm",
   metric = "ROC",
-  trControl = okc_ctrl
+  trControl = okc_train_control
 )
 
 sent_pred <- ncol(glm_sent$recipe$template) - 1
@@ -361,7 +404,7 @@ glm_resamples_mean <-
   summarize(ROC = mean(ROC))
 glm_resamples_mean$Resample = 'Average'
 
-temp_df = glm_resamples[,-c(2,3)]
+temp_df = glm_resamples[,-c(2,3,4,5,6,7,8,9,10)]
 
 full_df = rbind(glm_resamples_mean,temp_df )
 library(ggplot2)
@@ -371,94 +414,4 @@ ggplot(data = subset(full_df, Resample != 'Average'),aes(x=Features, y=ROC, colo
 
 ```
 
-```{r}
-library(caret)
-library(tidymodels)
-library(keras)
-library(doParallel)
-
-load("./Datasets/okc.RData")
-load("./Datasets/okc_other.RData")
-load("./Datasets/okc_binary.RData")
-load("./Datasets/okc_features.RData")
-
-okc_train <-
-  okc_train %>%
-  full_join(okc_train_binary) %>%
-  full_join(basic_features_train) %>%
-  arrange(profile) %>%
-  dplyr::select(-profile)
-
-# create feature sets
-
-basic_feat <- names(okc_test)
-basic_feat <- basic_feat[!(basic_feat %in% c("Class", "profile", "essay_length", "where_state"))]
-
-# keywords only
-
-keyword_feat <- names(okc_train_binary)
-keyword_feat <- keyword_feat[keyword_feat != "profile"]
-
-text_feat <-
-  c("n_urls", "n_hashtags", "n_mentions", "n_commas", "n_digits",
-    "n_exclaims", "n_extraspaces", "n_lowers", "n_lowersp", "n_periods",
-    "n_words", "n_puncts", "n_charsperword")
-
-sent_feat <-
-  c("sent_afinn", "sent_bing", "n_polite", "n_first_person", "n_first_personp",
-    "n_second_person", "n_second_personp", "n_third_person", "n_prepositions")
-
-# ------------------------------------------------------------------------------
-
-many_stats <-
-  function(data, lev = levels(data$obs), model = NULL) {
-    c(
-      twoClassSummary(data = data, lev = levels(data$obs), model),
-      prSummary(data = data, lev = levels(data$obs), model),
-      mnLogLoss(data = data, lev = levels(data$obs), model),
-      defaultSummary(data = data, lev = levels(data$obs), model)
-    )
-  }
-
-okc_ctrl <- trainControl(
-  method = "cv",
-  classProbs = TRUE,
-  summaryFunction = twoClassSummary,
-  returnData = FALSE,
-  trim = TRUE,
-  sampling = "down"
-)
-
-# ------------------------------------------------------------------------------
-## First run a tensorflow model (since it cannot be run in parallel
-## via foreach)
-
-## Recipe for the keywords that normalizes the predictors at the end
-
-keyword_norm <-
-  recipe(Class ~ .,
-         data = okc_train[, c("Class", basic_feat, keyword_feat)]) %>%
-  step_YeoJohnson(all_numeric()) %>%
-  step_other(where_town) %>%
-  step_dummy(all_nominal(), -all_outcomes()) %>%
-  step_zv(all_predictors()) %>%
-  step_center(all_predictors()) %>%
-  step_scale(all_predictors())
-
-okc_ctrl_rand <- okc_ctrl
-okc_ctrl_rand$search <- "random"
-set.seed(49)
-mlp_keyword <-
-  train(
-    keyword_norm,
-    data = okc_train,
-    method = "mlpKerasDropout",
-    metric = "ROC",
-    tuneLength = 20,
-    trControl = okc_ctrl_rand,
-    verbose = 0,
-    epochs = 10
-  )
-
-```
 
