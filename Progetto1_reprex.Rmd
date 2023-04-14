@@ -40,7 +40,7 @@ In particular will be addressed how to manage unordered and ordered categorical 
 
 ## Summary
 
-## Chapter 1
+## Encoding of unordered categorical data
 
 Handling categorial data is a very important step during the implementation of a statistical or machine learning model. Most of the models does not accept categorical data, but only numerical data. The only models that accepts this type of data are tree-based model which can handle this type of data by default.
 
@@ -148,6 +148,37 @@ hashes_df_signed = hashes_signed %>%
 
 
 ```
+## Encoding of ordered data
+
+Some categorical data can be ordered. One example of ordered categorical data, can be a review with values that are like "bad", "normal" and "good". In this case "bad" should have a different meaning with respect to the "good" case during the training of a model, and we should not only indicate the presence of the value "good" or "bad". 
+
+### How to encode ordered categorical data
+
+Ordered categorical data can have a different type of relationship between the values: for example the values can have a linear relationship or a quadratic relationship. We must encode these data with the right relationship in order to let the model understand this type of relationship. The encoding used to maintain this type of relationship is called _Polynomial Contrast_. A contrast has the characteristic that is a single comparison(one degree of freedom) and the sum of the coefficients is equal to zero.
+Polynomial contrast is useful, because it can represent linear relations, but also non linear shapes too: for example we can make a quadratic polynomial contrast, cubic polynomial contrast, etc. Polynomial constrast is also useful because it can be done on data with any number of ordered factors; the only "drawback" is that the complexity of the contrast can be, at most, equal to the number of categories of the predictor minus one: for example, if our ordered categorical predictor have three different levels, we can make only a linear and quadratic polynomial contrast. We can use _polynomial contrast_ to investigate multiple relationships at the same time by including them in the same model, for example both linear and quadratic polynomial contrast.
+
+### Drawbacks 
+
+A drawback of the polynomial contrast is that it may not relate directly the predictor to the response: for example, in the case where two levels of the categorical ordered predictor are very close, like in the case of "low" and "middle", polynomial contrast does not encode well this situation and does not have particular effective response in modeling the predictor's trend.
+Another drawback happens when we have a high number of different C categories: Because we can make at most $C-1$ degree polynomial contrast, if the number of C categories is very high, we can have higher grade contrasts, but in practice it has be seen that polynomial contrast is usually useful up to the quadratic polynomial contrast; in this case we might want to limit the maximum polynomial degree of the contrasts.
+
+### Alternatives
+
+Some alternatives to polynomial contrast are:
+
+#. Treat the predictors as unordered factors. This can be useful if the pattern of the categorical data is not polynomial, but if the underlying patter is linear or quadratic, unordered dummy variables may not uncover this trend.
+#. Manually translate the categories into a set of numberic score, using domani-specific knowledge of the data.
+
+### Code
+
+The following code illustrates how to obtain _polynomial contrast_ encoding for an ordered categorical predictor with 3 number of categories.
+
+```{r eval=TRUE}
+# Linear and quadratic polynomial contrasts are generated, the scores -1,0,1 can be seen as "bad", "medium" and "good" categories
+zapsmall(contr.poly(3, scores=c(-1,0,1)))
+
+```
+As we can see from the results of the code the linear _polynomial contrast_ have as values -0.71, 0, 0.71 and for quadratic _polynomial contrast_ value have 0.41, -0.82, 0,41. As we can see the two set of values has sum equal to 0.
 
 ## Features from text data
 
@@ -212,7 +243,7 @@ oddsratio.wald(odds_ratio_matrix)
 ```
 
 
-```{r}
+```{r eval=FALSE}
 library(caret)
 library(tidymodels)
 library(keras)

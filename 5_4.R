@@ -4,8 +4,7 @@ library(embed)
 
 rm(list=ls())
 
-setwd("C:/Users/david/Desktop/Università/2 anno/High dimensional data analysis/Progetto")
-load("okc.RData")
+load("./Datasets/okc.RData")
 
 sample_towns <- c(
   "belvedere_tiburon", "berkeley", "martinez", "mountain_view", "san_leandro",
