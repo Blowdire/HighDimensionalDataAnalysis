@@ -1,0 +1,776 @@
+---
+title: "hdda"
+output: html_document
+date: "2023-04-15"
+---
+## Dummy
+
+### Boosted C5.0
+```{r}
+
+library(caret)
+library(C50)
+library(pROC)
+# library(randomUniformForest)
+seed = 50
+carEvaluation=read.csv("car.data")
+colnames(carEvaluation)=c("buying","maint","doors","persons","lug_boot","safety","class")
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(class ~ ., data = training, 
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+test_res <- multiClassSummary(data=test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+result <- multiclass.roc(test_pred$pred, predictor=test_pred$acc)
+
+
+plot.roc(result$rocs[[1]], 
+         print.auc=T,
+         legacy.axes = T)
+plot.roc(result$rocs[[2]],
+         add=T, col = 'red',
+         print.auc = T,
+         legacy.axes = T,
+         print.auc.adj = c(0,3))
+plot.roc(result$rocs[[3]],add=T, col = 'blue',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,5))
+plot.roc(result$rocs[[4]],add=T, col = 'green',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,7))
+plot.roc(result$rocs[[5]],add=T, col = 'orange',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,9))
+plot.roc(result$rocs[[6]],add=T, col = 'lightblue',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,11))
+
+legend('bottomright',
+       legend = c('acc-good',
+                  'acc-unacc',
+                  'acc-vgood',
+                  'good-unacc',
+                  'good-vgood',
+                  'unacc-vgood'),
+       col=c('black','red','blue','green','orange','lightblue'),lwd=2)
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Dummy Variables"
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_dummy_", seed, ".RData")))
+```
+
+### Random Forest
+
+```{r}
+library(caret)
+library(ranger)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+read.csv("car.data")
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(class ~ ., data = training, 
+             method = "ranger",
+             tuneLength = 10, 
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500,
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Dummy Variables"
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("Random_Forest_dummy_", seed, ".RData")))
+```
+
+
+##Factors
+
+### Boosted C5.0 Rules
+
+```{r}
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+read.csv("car.data")
+
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Factor Variables"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Factor Variables"
+result <- multiclass.roc(test_pred$pred, predictor=test_pred$acc)
+
+
+plot.roc(result$rocs[[1]], 
+         print.auc=T,
+         legacy.axes = T)
+plot.roc(result$rocs[[2]],
+         add=T, col = 'red',
+         print.auc = T,
+         legacy.axes = T,
+         print.auc.adj = c(0,3))
+plot.roc(result$rocs[[3]],add=T, col = 'blue',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,5))
+plot.roc(result$rocs[[4]],add=T, col = 'green',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,7))
+plot.roc(result$rocs[[5]],add=T, col = 'orange',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,9))
+plot.roc(result$rocs[[6]],add=T, col = 'lightblue',
+         print.auc=T,
+         legacy.axes = T,
+         print.auc.adj = c(0,11))
+
+legend('bottomright',
+       legend = c('acc-good',
+                  'acc-unacc',
+                  'acc-vgood',
+                  'good-unacc',
+                  'good-vgood',
+                  'unacc-vgood'),
+       col=c('black','red','blue','green','orange','lightblue'),lwd=2)
+
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_factor_", seed, ".RData")))
+```
+### Random Forest
+
+```{r}
+
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+read.csv("car.data")
+
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "ranger",
+             tuneLength = 10,
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500,
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Factor Variables"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Factor Variables"
+
+###################################################################
+
+imp <- varImp(mod, scale = FALSE)$importance
+imp$Data <- "Car Evaluation"
+imp$Model <- "Random Forest"
+imp$Seed <- seed
+imp$Variable  <- rownames(imp)
+
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("Random_Forest_factor_", seed, ".RData")))
+```
+
+
+## Ordered factors
+
+### Boosted C5.0 Rules
+
+```{r}
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+data(carEvaluation)
+
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Factors"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Factors"
+
+###################################################################
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_ordered_", seed, ".RData")))
+```
+### Random Forest
+```{r}
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+data(carEvaluation)
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "ranger",
+             tuneLength = 10,
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500,
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Factors"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Factors"
+
+###################################################################
+
+imp <- varImp(mod, scale = FALSE)$importance
+imp$Data <- "Car Evaluation"
+imp$Model <- "Random Forest"
+imp$Seed <- seed
+imp$Variable  <- rownames(imp)
+
+###################################################################
+
+save(test_res, rs_res, imp,
+     file = file.path("./", "Salvataggi",
+                      paste0("rf_ordered_", seed, ".RData")))
+```
+
+## Orderd dummy
+
+### Boosted C5.0 Rules
+
+```{r}
+
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+data(carEvaluation)
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(class ~ ., data = training, 
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Dummy Variables"
+
+###################################################################
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_ordereddummy_", seed, ".RData")))
+```
+### Random Forest
+```{r}
+
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+data(carEvaluation)
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+###################################################################
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+###################################################################
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(class ~ ., data = training, 
+             method = "ranger",
+             tuneLength = 10,
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500, 
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+###################################################################
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+###################################################################
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Dummy Variables"
+
+###################################################################
+
+imp <- varImp(mod, scale = FALSE)$importance
+imp$Data <- "Car Evaluation"
+imp$Model <- "Random Forest"
+imp$Seed <- seed
+imp$Variable  <- rownames(imp)
+
+###################################################################
+
+save(test_res, rs_res, imp,
+     file = file.path("./", "Salvataggi",
+                      paste0("rf_ordereddummy_", seed, ".RData")))
+
+```
+## Plot data
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+###################################################################
+
+rdata_files <- list.files("Salvataggi", 
+                          pattern = "RData$",
+                          full.names = TRUE)
+
+test_results <- vector(mode = "list", length = length(rdata_files))
+rs_results <- test_results
+
+###################################################################
+
+for (i in seq_along(rdata_files)) {
+  load(rdata_files[i])
+  test_results[[i]] <- test_res
+  rs_results[[i]] <- rs_res
+  rm(test_res, rs_res)
+}
+
+test_results <- bind_rows(test_results) %>%
+  arrange(Model, Seed, Encoding)
+rs_results <-  bind_rows(rs_results)
+
+table(test_results$Model, test_results$Encoding)
+
+###################################################################
+
+factor_results <- test_results %>%
+  filter(Encoding == "Factor Variables") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Factors, logLoss:Mean_Balanced_Accuracy, Time)
+
+dummy_results <- test_results %>%
+  filter(Encoding == "Dummy Variables") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Dummies, logLoss:Mean_Balanced_Accuracy, Time)
+
+ordered_results <- test_results %>%
+  filter(Encoding == "Ordered Factors") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Ordered, logLoss:Mean_Balanced_Accuracy, Time)
+
+ordereddummy_results <- test_results %>%
+  filter(Encoding == "Ordered Dummy Variables") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Ordered_Dummy, logLoss:Mean_Balanced_Accuracy, Time)
+
+merged_results <- full_join(factor_results, dummy_results) %>%
+  full_join(ordered_results) %>%
+  full_join(ordereddummy_results) 
+
+###################################################################
+
+final_frame =  merged_results %>%
+    filter(Metric == "Accuracy") %>%
+    filter(Model == "Boosted C5.0 Rules") 
+final_frame = final_frame[c(5:8)]
+test = c(final_frame[1], final_frame[2], final_frame[3], final_frame[4])
+accuracy = final_frame[1:4]
+types = colnames((final_frame))
+final = data.frame(Encoding = types, Accuracy = final_frame[1,])
+
+if(interactive()) {
+  
+    ggplot(final, aes(x=Encoding, y=Accuracy)) + 
+  geom_bar(stat = "identity")+coord_cartesian(ylim=c(0.975, 1))
+  #+geom_bar(aes(x = Model, y = Dummies))+geom_bar(aes(x = Model, y = Ordered))+geom_bar(aes(x = Model, y = Ordered_Dummy))
+}
+
+###################################################################
+
+save(merged_results, file = "Car_Evaluation.RData")
+```
+
