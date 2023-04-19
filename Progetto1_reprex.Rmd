@@ -74,7 +74,9 @@ The process of hashing features is:
 #. Calculate the hash from the feature value, which is an integer value.
 #. Calculate the new feature value, if we want 16 different values we calculate _(hashValue mod 16) +1_
 
-Some considerations needs to be done: because of the nature of the hashing functions, sometimes we will have collisions. Collisions occurs when two different values has different hashing. In statistics this is an aliasing problem. A way to solve this problem consists into using signed hashes, so instead of only 0 and 1 values for dummy variables, we can also have -1 value in order to reduce aliasing.
+Some considerations needs to be done: because of the nature of the hashing functions, sometimes we will have collisions. Collisions occurs when two different values has different hashing. In statistics this is an aliasing problem. A way to solve this problem consists into using signed hashes, so instead of only 0 and 1 values for dummy variables, we can also have -1 value in order to reduce aliasing. To see if this method is effectively useful, we made a simulation consisting in a test predictor containing $10^4$ different categories, where each category is a random 20 characters string. We created different hash mappings of different sizes, and for each hash of specified size we created the signed and unsigned version, and we calculated the collision rates of both versions. Finally we made this simulation for 10 times and averaged all the results. Using a line plot we can see that the signed version of each hash has lower collision rates than the unsigned versions.
+![Table of encoded days of week using 6 dummy variables](./images/collisionRates.png)
+
 
 ### Problems of feature hashing
 
@@ -148,6 +150,69 @@ hashes_df_signed = hashes_signed %>%
 
 
 ```
+
+```{r}
+library(tidymodels)
+library(FeatureHashing)
+library(stringr)
+library(stringi)
+# Generate a test predictor with 10000 different categories
+
+
+getHash_collision_percentage <- function(dataframe, signed, size){
+  
+  hashes <- hashed.model.matrix(~fake_predictor,
+  data = dataframe,
+  hash.size = size,
+  signed.hash=signed,
+  create.mapping=TRUE
+);
+  mapping <- hash.mapping(hashes);
+  hashes_df_signed = hashes %>% 
+  as.matrix() %>%
+  as_tibble()%>%group_by_all() %>% summarise(COUNT = n())
+  1 - (nrow(hashes_df_signed) / nrow(test_df))
+}
+for (iteration_number in 1:10) {
+fake_predictor = stri_rand_strings(10000, 20)
+fake_predictor = c(fake_predictor, fake_predictor)
+length(unique(fake_predictor))
+result_df = data.frame()
+test_df = data.frame(fake_predictor)
+  unsigned_2048 = getHash_collision_percentage(test_df, FALSE, 2^11)
+signed_2048 = getHash_collision_percentage(test_df, TRUE, 2^11)
+
+unsigned_4096 = getHash_collision_percentage(test_df, FALSE, 2^12)
+signed_4096 = getHash_collision_percentage(test_df, TRUE, 2^12)
+
+
+unsigned_8192 = getHash_collision_percentage(test_df, FALSE, 2^13)
+signed_8192 = getHash_collision_percentage(test_df, TRUE, 2^13)
+
+unsigned_16384 = getHash_collision_percentage(test_df, FALSE, 2^14)
+signed_16384 = getHash_collision_percentage(test_df, TRUE, 2^14)
+
+unsigned_32768 = getHash_collision_percentage(test_df, FALSE, 2^15)
+signed_32768 = getHash_collision_percentage(test_df, TRUE, 2^15)
+
+
+result_df = rbind(result_df, c(unsigned_2048, signed_2048, unsigned_4096, signed_4096, unsigned_8192, signed_8192, unsigned_16384, signed_16384, unsigned_32768, signed_32768, iteration_number))
+}
+
+averaged_results = colMeans(result_df)
+average_df = data.frame(averaged_results)
+average_df_filtered <- data.frame(average_df[c(-11),])
+rownames(average_df_filtered) <- c("unsigned_2048","signed_2048", "unsigned_4096", "signed_4096","unsigned_8192", "signed_8192", "unsigned_16384", "signed_16384", "unsigned_32768", "signed_32768")
+average_df_filtered$signed = c(FALSE,TRUE,FALSE,TRUE,FALSE,TRUE,FALSE,TRUE,FALSE,TRUE)
+average_df_filtered$hashSize = c(2048,2048, 4096, 4096,8192, 8192, 16384, 16384, 32768, 32768)
+final_df <- as_tibble(average_df_filtered) %>% rename(CollisionRate = average_df.c..11....)
+library(ggplot2)
+
+
+ggplot(data = final_df,aes(x=hashSize, y=CollisionRate))+ geom_line(aes( colour=signed, group=signed)) + geom_point(aes( colour=signed, group=signed))
+
+```
+
 
 ## The problem of novel categories
 
