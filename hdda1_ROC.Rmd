@@ -769,7 +769,22 @@ if(interactive()) {
   geom_bar(stat = "identity")+coord_cartesian(ylim=c(0.9, 1))
   #+geom_bar(aes(x = Model, y = Dummies))+geom_bar(aes(x = Model, y = Ordered))+geom_bar(aes(x = Model, y = Ordered_Dummy))
 }
+final_frame =  merged_results %>%
+    filter(Metric == "Accuracy") %>%
+    filter(Model == "Random Forest") 
+final_frame = final_frame[c(5:8)]
+test = c(final_frame[1], final_frame[2], final_frame[3], final_frame[4])
+accuracy = final_frame[1:4]
+types = colnames((final_frame))
+final =  data.frame(t(final_frame))
+final$names = rownames(final)
 
+if(interactive()) {
+  
+    ggplot(final, aes(x=names, y=t.final_frame.)) + 
+  geom_bar(stat = "identity")+coord_cartesian(ylim=c(0.9, 1))
+  #+geom_bar(aes(x = Model, y = Dummies))+geom_bar(aes(x = Model, y = Ordered))+geom_bar(aes(x = Model, y = Ordered_Dummy))
+}
 ###################################################################
 
 save(merged_results, file = "Car_Evaluation.RData")
