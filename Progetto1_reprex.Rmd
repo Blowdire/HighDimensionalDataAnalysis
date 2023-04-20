@@ -29,22 +29,22 @@ output:
 knit: reprex::reprex_render
 ---
 # Encoding Categorical Predictors
-Agazzi Ruben <br />
-Davide Dell'Orto  <br />
-Hellem Carrasco  <br />
+Agazzi Ruben 844736 <br />
+Davide Dell'Orto 828873 <br />
+Hellem Carrasco 805840 <br />
 
 ## Abstract
 
 This is a comprehensive analysis (based on Chapter 5 of *Feature engineering and selection: a practical approach for predictive models* by Kuhn and Johnson) on how categorical, and more generally non numerical data can be encoded into a numerical form, in order to be used by all types of models.
 In particular will be addressed how to manage unordered and ordered categorical data, and also how to extract features from textual data.
 
-## Encoding of unordered categorical data
+## 5.1 Encoding of unordered categorical data
 
 Handling categorial data is a very important step during the implementation of a statistical or machine learning model. Most of the models does not accept categorical data, but only numerical data. The only models that accepts this type of data are tree-based model which can handle this type of data by default.
 
 ### Dummy Variables
 
-The most basic approach used for handling unordered categorical data, consists in creating dummy or indicator variables. The most common form is creating binary dummy variables for categorical predictors: if the categorical predictor can assume 3 values we can create 2 binary dummy variables where value 1 will be, for example, d1=1 and d2=0, value 2 will be d1=0 and d2=1 and where value 3 will be d1=0 and d2=0. We could also represent this type of categorical data with 3 dummy variables, but this approach could lead, sometimes, to problems: some models, in order to estimate their parameters, needs to invert the matrix $(X'X)$, if the model has an intercept an additional column of one for all columns is added to the $X$ matrix; if we add the new 3 dummy variables this will add to the previous intercept row, and this linear combination would prevent the $(X'X)$ matrix to be invertible. This is the reason why we encode $C$ different categories into $C-1$ dummy variables
+The most basic approach used for handling unordered categorical data consists in creating dummy or indicator variables. The most common form is creating binary dummy variables for categorical predictors: if the categorical predictor can assume 3 values we can create 2 binary dummy variables where value 1 will be, for example, d1=1 and d2=0, value 2 will be d1=0 and d2=1 and where value 3 will be d1=0 and d2=0. We could also represent this type of categorical data with 3 dummy variables, but this approach could lead, sometimes, to problems: some models, in order to estimate their parameters, needs to invert the matrix $(X'X)$, if the model has an intercept an additional column of one for all columns is added to the $X$ matrix; if we add the new 3 dummy variables this will add to the previous intercept row, and this linear combination would prevent the $(X'X)$ matrix to be invertible. This is the reason why we encode $C$ different categories into $C-1$ dummy variables
 
 ### Code
 
@@ -61,7 +61,7 @@ test_df = test_df[-c(5)]
 ```
 ![Table of encoded days of week using 6 dummy variables](./images/dummy_days_of_week_2.png)
 
-## Encoding predictors mith many categories
+## 5.2 Encoding predictors mith many categories
 We may have a problem by encoding values using simple dummy variables: if the categorical predictor can assume a large number of different values, like for example the ZIP code, we will end up with too many dummy variables.
 If we make a resampling on this type of data there is also the problem where some dummy variables will assume an always 0 value: this case is called _zero-variance predictor_. Using the example of ZIP codes, highly populated areas will lead to higher frequencies of the same ZIP codes, while some will be very rare, in this case the dummy variables could become _near-zero-variance predictors_. In this cases we could remove _zero-variance and near-zero-variance predictors_.
 
@@ -218,7 +218,7 @@ ggplot(data = final_df,aes(x=hashSize, y=CollisionRate))+ geom_line(aes( colour=
 ```
 
 
-## The problem of novel categories
+## 5.3 The problem of novel categories
 
 When we handle categorical data, we can come across a particular problem: using specific categories on trained models, that were trained with data that does not contain the mentioned category. For example, if we use a predictor that indicates the city where a person lives, it is very likely that in the training dataset will not contain all possible cities on the planet.
 
@@ -226,7 +226,7 @@ When we handle categorical data, we can come across a particular problem: using 
 
 A simple way to solve this problem, consists into adding an "other" category to the datasets: this permits to adapt the model to unseen categories, just by putting the unseen categories into the "other" category. We must ensure that the "other" category is present in the training ant test dataset.
 
-## Supervised encoding methods
+## 5.4 Supervised encoding methods
 
 When new levels appear after training or when predictors have many possible values, it's recommended to encode using *supervised methods*, which can be implemented in different modalities.
 
@@ -403,7 +403,7 @@ word_embed %>%
   scale_size(range = c(.1, 6)) +
 ```
 
-## Encoding of ordered data
+## 5.5 Encoding of ordered data
 
 Some categorical data can be ordered. One example of ordered categorical data, can be a review with values that are like "bad", "normal" and "good". In this case "bad" should have a different meaning with respect to the "good" case during the training of a model, and we should not only indicate the presence of the value "good" or "bad". 
 
@@ -435,7 +435,7 @@ zapsmall(contr.poly(3, scores=c(-1,0,1)))
 ```
 As we can see from the results of the code the linear _polynomial contrast_ have as values -0.71, 0, 0.71 and for quadratic _polynomial contrast_ value have 0.41, -0.82, 0,41. As we can see the two set of values has sum equal to 0.
 
-## Features from text data
+## 5.6 Features from text data
 
 Usually we can come around some textual data inside a dataset, for example a product description or a profile description. We need to find a way to extract some features from texts. One example can be searching for the presence of links inside the text. Like suggested in the book, we can make a new feature that indicates the presence of a link inside the profile description. This feature can be useful to be used to classify a profile, in order to predict if the profile belongs to a STEM or non-STEM person. With our testing dataset we found out that the profiles with a link in the description are 662, where 409 are STEM profiles and 253 are non stem profiles. The odds ratio of having a link in the STEM profiles is equal to 0.043, while the odds ratio of non-STEM profiles that have a link in the description is 0.026. This values makes us understand that the stem profiles that have a link in the description are 1.65 times higher than the non-STEM profiles with a link. To see if this proportion is reliable we made a confidence interval over the odds-ratio of profiles with link. The confidence interval at 95% have as lower bound 1.42 and as upper bound 1.96, in this case 1 is not included inside the interval, so we can say that this feature is not working only because of some random noise, but instead is a useful feature to distinguish profiles between STEM and non-STEM
 
@@ -691,7 +691,7 @@ ggplot(data = subset(full_df, Resample != 'Average'),aes(x=Features, y=ROC, colo
 ```
 
 
-## Factors versus Dummies
+## 5.7 Factors versus Dummies
 
 Does it matter how the predictors are encoded? A series of experiments was conducted, using the "carEvaluation" dataset to answer this question. 75% of the data was used as training set and a 10-folds cross-validation was applied. Two different models (Boosted 5.0 Rules and Random Forest) were fit to the data in their original form and to the dummy variables, both ordered and unordered.
 
