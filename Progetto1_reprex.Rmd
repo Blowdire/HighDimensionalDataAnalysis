@@ -35,7 +35,7 @@ Hellem Carrasco  <br />
 
 ## Abstract
 
-This is a comprehensive analysis of how categorical, and more general non numerical data can be encoded into a numerical form, in order to be used by all types of models.
+This is a comprehensive analysis (based on Chapter 5 of *Feature engineering and selection: a practical approach for predictive models* by Kuhn and Johnson) on how categorical, and more generally non numerical data can be encoded into a numerical form, in order to be used by all types of models.
 In particular will be addressed how to manage unordered and ordered categorical data, and also how to extract features from textual data.
 
 ## Encoding of unordered categorical data
@@ -63,7 +63,7 @@ test_df = test_df[-c(5)]
 
 ## Encoding predictors mith many categories
 We may have a problem by encoding values using simple dummy variables: if the categorical predictor can assume a large number of different values, like for example the ZIP code, we will end up with too many dummy variables.
-If we make a resampling on this type of data there is also the problem where some dummy variables will assume an always 0 value: this case is called _zero-variance predictor_. Using the example of ZIP codes, highli popolated areas will lead to higher frequencies of the same ZIP codes, while some will be very rare, in this case the dummy variables could become _near-zero-variance predictors_. In this cases we could remove _zero-variance and near-zero-variance predictors_.
+If we make a resampling on this type of data there is also the problem where some dummy variables will assume an always 0 value: this case is called _zero-variance predictor_. Using the example of ZIP codes, highly populated areas will lead to higher frequencies of the same ZIP codes, while some will be very rare, in this case the dummy variables could become _near-zero-variance predictors_. In this cases we could remove _zero-variance and near-zero-variance predictors_.
 
 ### Hashing functions
 Instead of removing the mentioned types of predictors we could use an hashing function to map the values into fewer values, and then use these values to create dummy variables. the process of using hashes to create dummy variables is called _feature hasing_ or _hash trick_.
@@ -82,7 +82,7 @@ The process of feature hashing can lead to some problems:
 
 #. Collisions: Even with signed hashes collisions can appear, and in this cases is more difficult to understand the impact of a category on the model because of this aliasing problem.
 #. Collision meaning: if two categories collides, this does not mean that they share something in common or have some type of correlation or similarity.
-#. Collision probability: as hashing function does not have information about the distribution of data, rarer categories can collide with more high frequency categories, in this case the higher frequency category will have much more influence.
+#. Collision probability: as hashing function does not have information about the distribution of data, rarer categories can collide with higher frequency categories, in this case the higher frequency category will have much more influence.
 
 ### Code 
 This piece of code shows how feature hashing can be done. The dataset used is the OkCupid dataset and the categorical predictor used was the _where_town_ column of the dataset.
@@ -228,15 +228,14 @@ A simple way to solve this problem, consists into adding an "other" category to 
 
 ## Supervised encoding methods
 
-
-When the predictors have many possible values or when new levels appear after training, it’s recommended to encode using *supervised methods*, which can be implemented in different modalities.
+When new levels appear after training or when predictors have many possible values, it's recommended to encode using *supervised methods*, which can be implemented in different modalities.
 
 ### Likelihood encoding
 
 The first type consists of measuring the effect on the outcome by calculating a statistic for the categorical predictors and using this to represent the factor levels in the model. For example we can calculate the odds which is the ratio between two rates of occurrence (probabilities of complementary events), p and (1-p). A model like a logistic regression can then model the log-odds (*ln* of odds) as a function of the predictors. If a single categorical predictor is included in the model, then the log-odds can be calculated for each predictor value and can be used this as the encoding.
 
 
-```{r library, tidy=TRUE, results="hide", message=FALSE, warning=FALSE}
+```{r library, results="hide", message=FALSE, warning=FALSE}
 library(tidyverse)
 library(dplyr)
 library(embed)
@@ -274,7 +273,7 @@ The problems with this method begin when a categorical predictor has a single va
 
 There are different methods of shrinking, the most common is based on the prior distribution for the estimates, a theoretical distribution that represents the overall distribution of effects, like for example a normal distribution. Bayesian methods take the observed data and blend it with the prior distribution to come up with a posterior distribution that is a combination of the two. Also, when a new level appears after training, its effect can be estimated using the mean of the posterior distribution.
 
-```{r shrink, tidy=TRUE, include=TRUE, warning=FALSE, eval=FALSE}
+```{r shrink, include=TRUE, warning=FALSE, eval=FALSE}
 # fit a generalized linear model and return encoding
 
 shrink_rec <- 
@@ -304,7 +303,7 @@ shrinken_sample %>% add_row(tail(shrinken, 1)) %>% pander(round=3)
 ```
 
 The shrinking effect is shown below: plot a. compares the raw with the shrunken log-odds, while plot b. shows the magnitude of the estimates (mean between raw and shrinken odds) versus the difference between the two.
-```{r plots, tidy=TRUE, warning=FALSE, eval=FALSE}
+```{r plots, warning=FALSE, eval=FALSE}
 # plots where size of the points is Log of n. osservations
 
 odds_rng <- extendrange(c(shrinken$raw, shrinken$shrunk), f = 0.01) # log-odds range
@@ -333,14 +332,14 @@ ggpubr::ggarrange(plot_a, plot_b,
                   labels=c("a.","b."))
 ```
 
-One issue with effect encoding is that it increases the possibility of overfitting since the estimated effects are taken from one model and put into another model (as variables) and if these two models are based on the same data it can lead to overfitting. Also, the use of summary statistics as predictors can drastically underestimate the variation in the data.
+One issue with effect encoding is that it increases the possibility of overfitting since the estimated effects are taken from one model and put into another model and if these two models are based on the same data it can lead to overfitting. Also, the use of summary statistics as predictors can drastically underestimate the variation in the data.
 
 ### Word embedding
 
-Another approach comes from the analysis of textual data: with *word embedding* the idea is to represent the categorical predictors as vectors and this cane be done with different algorithms in order to avoid sparsity. Once the number of new features are specified, the model takes the traditional indicators variables and randomly assigns them to one of the new features. The model then tries to optimize both the allocation of the indicators to features as well as the parameter coefficients for the features themselves. It’s common to use as a loss function the root mean squared error for numeric outcomes and cross-entropy for categorical outcomes.
+Another approach comes from the analysis of textual data: with *word embedding* the idea is to represent the categorical predictors as vectors and this cane be done with different techniques in order to avoid sparsity. Once the number of new features is specified, the model takes the traditional indicators variables and randomly assigns them to one of the new features. The model then tries to optimize both the allocation of the indicators to features as well as the parameter coefficients for the features themselves. It’s common to use as a loss function the root mean squared error for numeric outcomes and cross-entropy for categorical outcomes.
 
 A neural network structure can also be used, where the encoding happens in the hidden layers. This type of model can include a set of other unrelated predictors in order to adjust and better estimate the encoding in presence of other potentially important features.
-```{r embed, tidy=TRUE, include=TRUE, warning=FALSE, eval=FALSE}
+```{r embed, include=TRUE, warning=FALSE, eval=FALSE}
 # merge training data with the keyword indicators
 
 keywords <- names(okc_train_binary)[-1]
@@ -391,7 +390,7 @@ pander(word_embed_sample, round=3)
 
 The figure below shows the relationship between the resulting features and the raw log-odds.
 
-```{r fplot, tidy=TRUE, include=TRUE, warning=FALSE,eval=FALSE}
+```{r fplot, include=TRUE, warning=FALSE,eval=FALSE}
 word_embed %>%
   full_join(okc_props, by = "location") %>%
   gather(feature, value, -rate, -raw, -n, -location) %>% 
@@ -410,13 +409,13 @@ Some categorical data can be ordered. One example of ordered categorical data, c
 
 ### How to encode ordered categorical data
 
-Ordered categorical data can have a different type of relationship between the values: for example the values can have a linear relationship or a quadratic relationship. We must encode these data with the right relationship in order to let the model understand this type of relationship. The encoding used to maintain this type of relationship is called _Polynomial Contrast_. A contrast has the characteristic that is a single comparison(one degree of freedom) and the sum of the coefficients is equal to zero.
-Polynomial contrast is useful, because it can represent linear relations, but also non linear shapes too: for example we can make a quadratic polynomial contrast, cubic polynomial contrast, etc. Polynomial constrast is also useful because it can be done on data with any number of ordered factors; the only "drawback" is that the complexity of the contrast can be, at most, equal to the number of categories of the predictor minus one: for example, if our ordered categorical predictor have three different levels, we can make only a linear and quadratic polynomial contrast. We can use _polynomial contrast_ to investigate multiple relationships at the same time by including them in the same model, for example both linear and quadratic polynomial contrast.
+Ordered categorical data can have a different type of relationship between the values: for example the values can have a linear relationship or a quadratic relationship. We must encode these data with the right relationship in order to let the model understand this type of relationship. The encoding used to maintain this type of relationship is called _Polynomial Contrast_. A contrast has the characteristic that is a single comparison (one degree of freedom) and the sum of the coefficients is equal to zero.
+Polynomial contrast is useful, because it can represent linear relations, but also non linear shapes too: for example we can make a quadratic polynomial contrast, cubic polynomial contrast, etc. Polynomial constrast is also useful because it can be done on data with any number of ordered factors; the only "drawback" is that the complexity of the contrast can be, at most, equal to the number of categories of the predictor minus one: for example, if our ordered categorical predictor has three different levels, we can make only a linear and quadratic polynomial contrast. We can use _polynomial contrast_ to investigate multiple relationships at the same time by including them in the same model, for example both linear and quadratic polynomial contrast.
 
 ### Drawbacks 
 
 A drawback of the polynomial contrast is that it may not relate directly the predictor to the response: for example, in the case where two levels of the categorical ordered predictor are very close, like in the case of "low" and "middle", polynomial contrast does not encode well this situation and does not have particular effective response in modeling the predictor's trend.
-Another drawback happens when we have a high number of different C categories: Because we can make at most $C-1$ degree polynomial contrast, if the number of C categories is very high, we can have higher grade contrasts, but in practice it has be seen that polynomial contrast is usually useful up to the quadratic polynomial contrast; in this case we might want to limit the maximum polynomial degree of the contrasts.
+Another drawback happens when we have a high number of different $C$ categories: because we can make at most $C-1$ degree polynomial contrast, if the number of $C$ categories is very high, we can have higher grade contrasts, but in practice it has be seen that polynomial contrast is usually useful up to the quadratic polynomial contrast; in this case we might want to limit the maximum polynomial degree of the contrasts.
 
 ### Alternatives
 
@@ -716,7 +715,8 @@ For the Random forest model, we can see from the plot of the results that in the
 In conclusion, after these experiments, it is possible to say that, in this particular case, it is better to use predictors without converting them to dummy variables.
 
 ### Code
-In this section there is the code used to perform this analysis, includin the model training and plotting of results.
+In this section there is the code used to perform this analysis, including the model training and plotting of results.
+
 ## Dummy
 
 ### Boosted C5.0
@@ -831,7 +831,7 @@ save(test_res, rs_res,
                       paste0("Random_Forest_dummy_", seed, ".RData")))
 ```
 
-##Factors
+## Factors
 
 ### Boosted C5.0 Rules
 
@@ -1109,7 +1109,7 @@ save(test_res, rs_res, imp,
      file = file.path("./", "Salvataggi",
                       paste0("rf_ordered_", seed, ".RData")))
 ```
-## Orderd dummy
+## Ordered dummy
 
 ### Boosted C5.0 Rules
 
@@ -1252,7 +1252,7 @@ save(test_res, rs_res, imp,
                       paste0("rf_ordereddummy_", seed, ".RData")))
 
 ```
-## Plot data
+### Plot results
 
 ```{r, eval=FALSE}
 library(dplyr)
