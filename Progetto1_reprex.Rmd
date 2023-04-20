@@ -222,7 +222,7 @@ When we handle categorical data, we can come across a particular problem: using 
 
 A simple way to solve this problem, consists into adding an "other" category to the datasets: this permits to adapt the model to unseen categories, just by putting the unseen categories into the "other" category. We must ensure that the "other" category is present in the training ant test dataset.
 
-## Suervised encoding methods
+### Supervised encoding methods
 
 
 When the predictors have many possible values or when new levels appear after training, it’s recommended to encode using *supervised methods*, which can be implemented in different modalities.
@@ -400,28 +400,28 @@ word_embed %>%
   scale_size(range = c(.1, 6)) +
 ```
 
-## Encoding of ordered data
+### Encoding of ordered data
 
 Some categorical data can be ordered. One example of ordered categorical data, can be a review with values that are like "bad", "normal" and "good". In this case "bad" should have a different meaning with respect to the "good" case during the training of a model, and we should not only indicate the presence of the value "good" or "bad". 
 
-### How to encode ordered categorical data
+## How to encode ordered categorical data
 
 Ordered categorical data can have a different type of relationship between the values: for example the values can have a linear relationship or a quadratic relationship. We must encode these data with the right relationship in order to let the model understand this type of relationship. The encoding used to maintain this type of relationship is called _Polynomial Contrast_. A contrast has the characteristic that is a single comparison(one degree of freedom) and the sum of the coefficients is equal to zero.
 Polynomial contrast is useful, because it can represent linear relations, but also non linear shapes too: for example we can make a quadratic polynomial contrast, cubic polynomial contrast, etc. Polynomial constrast is also useful because it can be done on data with any number of ordered factors; the only "drawback" is that the complexity of the contrast can be, at most, equal to the number of categories of the predictor minus one: for example, if our ordered categorical predictor have three different levels, we can make only a linear and quadratic polynomial contrast. We can use _polynomial contrast_ to investigate multiple relationships at the same time by including them in the same model, for example both linear and quadratic polynomial contrast.
 
-### Drawbacks 
+## Drawbacks 
 
 A drawback of the polynomial contrast is that it may not relate directly the predictor to the response: for example, in the case where two levels of the categorical ordered predictor are very close, like in the case of "low" and "middle", polynomial contrast does not encode well this situation and does not have particular effective response in modeling the predictor's trend.
 Another drawback happens when we have a high number of different C categories: Because we can make at most $C-1$ degree polynomial contrast, if the number of C categories is very high, we can have higher grade contrasts, but in practice it has be seen that polynomial contrast is usually useful up to the quadratic polynomial contrast; in this case we might want to limit the maximum polynomial degree of the contrasts.
 
-### Alternatives
+## Alternatives
 
 Some alternatives to polynomial contrast are:
 
 #. Treat the predictors as unordered factors. This can be useful if the pattern of the categorical data is not polynomial, but if the underlying patter is linear or quadratic, unordered dummy variables may not uncover this trend.
 #. Manually translate the categories into a set of numberic score, using domani-specific knowledge of the data.
 
-### Code
+## Code
 
 The following code illustrates how to obtain _polynomial contrast_ encoding for an ordered categorical predictor with 3 number of categories.
 
@@ -432,11 +432,11 @@ zapsmall(contr.poly(3, scores=c(-1,0,1)))
 ```
 As we can see from the results of the code the linear _polynomial contrast_ have as values -0.71, 0, 0.71 and for quadratic _polynomial contrast_ value have 0.41, -0.82, 0,41. As we can see the two set of values has sum equal to 0.
 
-## Features from text data
+### Features from text data
 
 Usually we can come around some textual data inside a dataset, for example a product description or a profile description. We need to find a way to extract some features from texts. One example can be searching for the presence of links inside the text. Like suggested in the book, we can make a new feature that indicates the presence of a link inside the profile description. This feature can be useful to be used to classify a profile, in order to predict if the profile belongs to a STEM or non-STEM person. With our testing dataset we found out that the profiles with a link in the description are 662, where 409 are STEM profiles and 253 are non stem profiles. The odds ratio of having a link in the STEM profiles is equal to 0.043, while the odds ratio of non-STEM profiles that have a link in the description is 0.026. This values makes us understand that the stem profiles that have a link in the description are 1.65 times higher than the non-STEM profiles with a link. To see if this proportion is reliable we made a confidence interval over the odds-ratio of profiles with link. The confidence interval at 95% have as lower bound 1.42 and as upper bound 1.96, in this case 1 is not included inside the interval, so we can say that this feature is not working only because of some random noise, but instead is a useful feature to distinguish profiles between STEM and non-STEM
 
-### Other features
+## Other features
 By following the previous analysis, other features can be obtained, like the presence of certain keywords, or the count itself of a specified word, the number of commas, hashtags, exclamation points, etc..
 In this case it is useful to remember that some form of preprocessing should be done when working with textual data. The preprocessing steps can consists in:
 
@@ -455,17 +455,17 @@ The 4 datasets sused for the training are:
 #. Basic Ok Cupid dataset, text features and keyword features, like the presence of the "software" term in the description.
 #. Basic Ok Cupid dataset, text features, keyword features and sentiment features, like the number of sentences, number of sentences written in first or third person, etc.
 
-### Performance evaluation
+## Performance evaluation
 In order to evaluate the performances of the 4 different models, we used the area under the ROC curve. The training also performs 10-Fold cross validation in order to have more precise results. In the end the performance is calculated as the average of the 10 folds performances.
 
 ![Plot of performance measure of the 4 trained models using the different feature sets](./images/training_results_chapter5_6.png)
 As we can see from the plot showing the performances, adding the simple text features to the dataset improves the area under the ROC courve by a little, while adding the keywords features greatly improves the performances. Adding the sentiment analysis features, on the other hand, decreases the performance with respect to the model trained with only the simple text features and keywords features.
 
-### Other considerations
+## Other considerations
 
 Another way of extracting text features can be the implementation of tf-idf statistics to identify important words: this statistic measures the grade of importance of a word inside its context, so if is more present locally it is considered more important, and inside the global context of documents, so if a word is rare among all documents its importance is considered bigger. The good thing of tf-idf is that it can consider not only single words, but n-grams, and this could lead to find more useful features inside our textual data.
 
-### Code
+## Code
 The following code contains the analysis made on the odds ratio of the presence of link feature and the training and comparison of the 4 models with different feature sets.
 ```{r}
 library(epitools)
@@ -697,4 +697,21 @@ ggplot(data = subset(full_df, Resample != 'Average'),aes(x=Features, y=ROC, colo
 
 ```
 
+
+### Factors versus Dummies
+
+Does it matter how the predictors are encoded? A series of experiments was conducted, using the "carEvaluation" dataset to answer this question. 75% of the data was used as training set and a 10-folds cross-validation was applied. Two different models (Bosted 5.0 Rules and Random Forest) were fit to the data in their original form and to the dummy variables, both ordered and unordered.
+
+For each model, performance metrics were estimated using resampling as well as the total time to train and tune the model.
+We compared them using AUC and accuracy. The plot below shows that, based on accuracy metric, the factor encodings are better than unordered dummy variables: this may be due to the fact that the dataset has 4 classes and all the predictors are categorical. Instead, no differences are basically visible in the case of ordered dummy variables.
+
+```{r}
+
+## plot
+
+```
+
+As initially said, the training time of the model was also calculated and we observed that the speed-up of using factors is in general higher and this happened because extending the number of predictors (by generating dummies) requires more computational time than using factor levels.
+
+In conclusion, after these experiments, it is possible to say that it is better to use predictors without converting them to dummy variables.
 
