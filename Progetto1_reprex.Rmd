@@ -466,7 +466,7 @@ In order to evaluate the performances of the 4 different models, we used the are
 
 In order to have more precise results, we decided to use cross validation to train the models. Cross validation consists in splitting the data into k number of folds: for training are used $k-1$ folds, and the one fold left out is used to test the performance. Every fold is used for training and for testing. For every training performed we save the results, and in the end we make an average of the results. This can lead to better performance estimation, because the training is done on all the data after all the training step, and all the data is used for testing after all the testing step.
 ![Plot of performance measure of the 4 trained models using the different feature sets](./images/training_results_chapter5_6.png)
-As we can see from the plot showing the performances, adding the simple text features to the dataset improves the area under the ROC courve by a little, while adding the keywords features greatly improves the performances. Adding the sentiment analysis features, on the other hand, decreases the performance with respect to the model trained with only the simple text features and keywords features.
+As we can see from the plot showing the performances, adding the simple text features to the dataset improves the area under the ROC curve by a little, while adding the keywords features greatly improves the performances. Adding the sentiment analysis features, on the other hand, decreases the performance with respect to the model trained with only the simple text features and keywords features.
 
 ### Other considerations
 
@@ -694,7 +694,7 @@ ggplot(data = subset(full_df, Resample != 'Average'),aes(x=Features, y=ROC, colo
 
 ## Factors versus Dummies
 
-Does it matter how the predictors are encoded? A series of experiments was conducted, using the "carEvaluation" dataset to answer this question. 75% of the data was used as training set and a 10-folds cross-validation was applied. Two different models (Bosted 5.0 Rules and Random Forest) were fit to the data in their original form and to the dummy variables, both ordered and unordered.
+Does it matter how the predictors are encoded? A series of experiments was conducted, using the "carEvaluation" dataset to answer this question. 75% of the data was used as training set and a 10-folds cross-validation was applied. Two different models (Boosted 5.0 Rules and Random Forest) were fit to the data in their original form and to the dummy variables, both ordered and unordered.
 
 ### Accuracy evaluation
 
