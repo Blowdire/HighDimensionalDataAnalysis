@@ -344,6 +344,7 @@ plot_b <-
 ggpubr::ggarrange(plot_a, plot_b,
                   labels=c("a.","b."))
 ```
+![Shrinking effect](./images/logoddsComparison.png)
 
 One issue with effect encoding is that it increases the possibility of overfitting since the estimated effects are taken from one model and put into another model and if these two models are based on the same data it can lead to overfitting. Also, the use of summary statistics as predictors can drastically underestimate the variation in the data.
 
@@ -415,6 +416,7 @@ word_embed %>%
   xlab("Feature Value") + 
   scale_size(range = c(.1, 6)) +
 ```
+![Relationship between features and raw log-odds](./images/featuresOdds.png)
 
 ## 5.5 Encoding of ordered data
 
