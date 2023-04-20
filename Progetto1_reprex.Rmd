@@ -59,6 +59,7 @@ test_df <- data.frame(days_of_week)
 test_df <- dummy_cols(test_df, select_columns = c('days_of_week'))
 test_df <- test_df[-c(5)]
 ```
+
 ![Table of encoded days of week using 6 dummy variables](./images/dummy_days_of_week_2.png)
 
 ## 5.2 Encoding predictors mith many categories
@@ -73,7 +74,8 @@ The process of hashing features is:
 #. Calculate the new feature value, if we want 16 different values we calculate _(hashValue mod 16) +1_
 
 Some considerations needs to be done: because of the nature of the hashing functions, sometimes we will have collisions. Collisions occurs when two different values has different hashing. In statistics this is an aliasing problem. A way to solve this problem consists into using signed hashes, so instead of only 0 and 1 values for dummy variables, we can also have -1 value in order to reduce aliasing. To see if this method is effectively useful, we made a simulation consisting in a test predictor containing $10^4$ different categories, where each category is a random 20 characters string. We created different hash mappings of different sizes, and for each hash of specified size we created the signed and unsigned version, and we calculated the collision rates of both versions. Finally we made this simulation for 10 times and averaged all the results. Using a line plot we can see that the signed version of each hash has lower collision rates than the unsigned versions.
-![Table of encoded days of week using 6 dummy variables](./images/collisionRates.png)
+
+![Plot of hash collision rate for feature hasing of different sizes.](./images/collisionRates.png)
 
 
 ### Problems of feature hashing
@@ -480,7 +482,9 @@ In order to evaluate the performances of the 4 different models, we used the are
 ### Cross validaiton
 
 In order to have more precise results, we decided to use cross validation to train the models. Cross validation consists in splitting the data into k number of folds: for training are used $k-1$ folds, and the one fold left out is used to test the performance. Every fold is used for training and for testing. For every training performed we save the results, and in the end we make an average of the results. This can lead to better performance estimation, because the training is done on all the data after all the training step, and all the data is used for testing after all the testing step.
-![Plot of performance measure of the 4 trained models using the different feature sets](./images/training_results_chapter5_6.png)
+
+![Plot of performance measure of the 4 trained models using the different feature sets.](./images/training_results_chapter5_6.png)
+
 As we can see from the plot showing the performances, adding the simple text features to the dataset improves the area under the ROC curve by a little, while adding the keywords features greatly improves the performances. Adding the sentiment analysis features, on the other hand, decreases the performance with respect to the model trained with only the simple text features and keywords features.
 
 ### Other considerations
@@ -717,17 +721,21 @@ Does it matter how the predictors are encoded? A series of experiments was condu
 For each model, performance metrics were estimated using resampling as well as the total time to train and tune the model.
 We compared them using AUC and accuracy. The plot below shows that, based on accuracy metric and for the Boosted C5.0 Rules model, the factor encodings are better than unordered dummy variables: this may be due to the fact that the dataset has 4 classes and all the predictors are categorical. Instead, no differences are basically visible in the case of ordered dummy variables.
 
-![Plot of the accuracy of the Boosted C5.0 Rules Model using factors or dummies, ordered and unordered](./images/accuracy_bar_boosted.png)
+![Plot of the accuracy of the Boosted C5.0 Rules Model using factors or dummies, ordered and unordered.](./images/accuracy_bar_boosted.png)
+
 For the Random Forest Model, using accuracy as measure, we saw that there is a strong difference when using unordered dummies and factor, where the factor encoded predictor have a higher value of accuracy. Instead, if the predictor is ordered, the dummy enconding performs a little better than the ordered factors predictor. It is important to say, that in every case the accuracy is very high, all above 90%, so the differences are not too big.
-![Plot of the accuracy of the Random Forest Model using factors or dummies, ordered and unordered](./images/Accuracy_Bar_Random_forest.png)
+
+![Plot of the accuracy of the Random Forest Model using factors or dummies, ordered and unordered.](./images/Accuracy_Bar_Random_forest.png)
 
 ### Time evaluation
 
 As we can see from the bar plot, the time spent on training the Boosted C5.0 Rules model, using factor encoding lead to a speedup of the training process. We must remember that the training time for this model is generally low, so the difference is in terms of a few seconds.
 
-![Plot of the training time of the Boosted C5.0 Model using factors or dummies, ordered and unordered](./images/time_bar_boosted.png)
+![Plot of the training time of the Boosted C5.0 Model using factors or dummies, ordered and unordered.](./images/time_bar_boosted.png)
+
 For the Random forest model, we can see from the plot of the results that in the case of factor encoding, the training time is significally faster, where the training time is almost half as the time of the models using dummies. This difference for this type of model is very important and it should be considered when choosing which type of encoding to use for this model
-![Plot of the training time of the Random Forest using factors or dummies, ordered and unordered](./images/time_bar_random_forest.png)
+
+![Plot of the training time of the Random Forest using factors or dummies, ordered and unordered.](./images/time_bar_random_forest.png)
 
 In conclusion, after these experiments, it is possible to say that, in this particular case, it is better to use predictors without converting them to dummy variables.
 
