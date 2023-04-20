@@ -38,8 +38,6 @@ Hellem Carrasco  <br />
 This is a comprehensive analysis of how categorical, and more general non numerical data can be encoded into a numerical form, in order to be used by all types of models.
 In particular will be addressed how to manage unordered and ordered categorical data, and also how to extract features from textual data.
 
-## Summary
-
 ## Encoding of unordered categorical data
 
 Handling categorial data is a very important step during the implementation of a statistical or machine learning model. Most of the models does not accept categorical data, but only numerical data. The only models that accepts this type of data are tree-based model which can handle this type of data by default.
@@ -151,16 +149,16 @@ hashes_df_signed = hashes_signed %>%
 
 ```
 
-```{r}
+```{r eval=FALSE}
 library(tidymodels)
 library(FeatureHashing)
 library(stringr)
 library(stringi)
 # Generate a test predictor with 10000 different categories
 
-
+# Function used to calculate hash mapping collision rate, it can be specified an hash size and if the hash should be signed or not
 getHash_collision_percentage <- function(dataframe, signed, size){
-  
+  #Create hases
   hashes <- hashed.model.matrix(~fake_predictor,
   data = dataframe,
   hash.size = size,
@@ -168,37 +166,43 @@ getHash_collision_percentage <- function(dataframe, signed, size){
   create.mapping=TRUE
 );
   mapping <- hash.mapping(hashes);
+  # Group same hashes 
   hashes_df_signed = hashes %>% 
   as.matrix() %>%
   as_tibble()%>%group_by_all() %>% summarise(COUNT = n())
+  # Calculate collision rate
   1 - (nrow(hashes_df_signed) / nrow(test_df))
 }
+#Make a simulation 10 times
 for (iteration_number in 1:10) {
-fake_predictor = stri_rand_strings(10000, 20)
-fake_predictor = c(fake_predictor, fake_predictor)
-length(unique(fake_predictor))
-result_df = data.frame()
-test_df = data.frame(fake_predictor)
+  #Creation of 10k categories fake predictor
+  fake_predictor = stri_rand_strings(10000, 20)
+  fake_predictor = c(fake_predictor, fake_predictor)
+  
+  result_df = data.frame()
+  #Create dataframe from fake predictor
+  test_df = data.frame(fake_predictor)
+  #Creation of hashes of various sizes and both signed and unsigned versions
   unsigned_2048 = getHash_collision_percentage(test_df, FALSE, 2^11)
-signed_2048 = getHash_collision_percentage(test_df, TRUE, 2^11)
-
-unsigned_4096 = getHash_collision_percentage(test_df, FALSE, 2^12)
-signed_4096 = getHash_collision_percentage(test_df, TRUE, 2^12)
-
-
-unsigned_8192 = getHash_collision_percentage(test_df, FALSE, 2^13)
-signed_8192 = getHash_collision_percentage(test_df, TRUE, 2^13)
-
-unsigned_16384 = getHash_collision_percentage(test_df, FALSE, 2^14)
-signed_16384 = getHash_collision_percentage(test_df, TRUE, 2^14)
-
-unsigned_32768 = getHash_collision_percentage(test_df, FALSE, 2^15)
-signed_32768 = getHash_collision_percentage(test_df, TRUE, 2^15)
-
-
-result_df = rbind(result_df, c(unsigned_2048, signed_2048, unsigned_4096, signed_4096, unsigned_8192, signed_8192, unsigned_16384, signed_16384, unsigned_32768, signed_32768, iteration_number))
+  signed_2048 = getHash_collision_percentage(test_df, TRUE, 2^11)
+  
+  unsigned_4096 = getHash_collision_percentage(test_df, FALSE, 2^12)
+  signed_4096 = getHash_collision_percentage(test_df, TRUE, 2^12)
+  
+  
+  unsigned_8192 = getHash_collision_percentage(test_df, FALSE, 2^13)
+  signed_8192 = getHash_collision_percentage(test_df, TRUE, 2^13)
+  
+  unsigned_16384 = getHash_collision_percentage(test_df, FALSE, 2^14)
+  signed_16384 = getHash_collision_percentage(test_df, TRUE, 2^14)
+  
+  unsigned_32768 = getHash_collision_percentage(test_df, FALSE, 2^15)
+  signed_32768 = getHash_collision_percentage(test_df, TRUE, 2^15)
+  
+  #Add row with results to final dataframe
+  result_df = rbind(result_df, c(unsigned_2048, signed_2048, unsigned_4096, signed_4096, unsigned_8192, signed_8192, unsigned_16384, signed_16384, unsigned_32768, signed_32768, iteration_number))
 }
-
+#Make average of simulation results
 averaged_results = colMeans(result_df)
 average_df = data.frame(averaged_results)
 average_df_filtered <- data.frame(average_df[c(-11),])
@@ -208,7 +212,7 @@ average_df_filtered$hashSize = c(2048,2048, 4096, 4096,8192, 8192, 16384, 16384,
 final_df <- as_tibble(average_df_filtered) %>% rename(CollisionRate = average_df.c..11....)
 library(ggplot2)
 
-
+#Plot of the results
 ggplot(data = final_df,aes(x=hashSize, y=CollisionRate))+ geom_line(aes( colour=signed, group=signed)) + geom_point(aes( colour=signed, group=signed))
 
 ```
@@ -222,12 +226,12 @@ When we handle categorical data, we can come across a particular problem: using 
 
 A simple way to solve this problem, consists into adding an "other" category to the datasets: this permits to adapt the model to unseen categories, just by putting the unseen categories into the "other" category. We must ensure that the "other" category is present in the training ant test dataset.
 
-### Supervised encoding methods
+## Supervised encoding methods
 
 
 When the predictors have many possible values or when new levels appear after training, it’s recommended to encode using *supervised methods*, which can be implemented in different modalities.
 
-## Likelihood encoding
+### Likelihood encoding
 
 The first type consists of measuring the effect on the outcome by calculating a statistic for the categorical predictors and using this to represent the factor levels in the model. For example we can calculate the odds which is the ratio between two rates of occurrence (probabilities of complementary events), p and (1-p). A model like a logistic regression can then model the log-odds (*ln* of odds) as a function of the predictors. If a single categorical predictor is included in the model, then the log-odds can be calculated for each predictor value and can be used this as the encoding.
 
@@ -241,7 +245,7 @@ library(gridExtra)
 library(pander) # for table layout
 ```
 
-```{r odds, tidy=TRUE, include=TRUE, warning=FALSE}
+```{r odds, tidy=TRUE, include=TRUE, warning=FALSE, eval=FALSE}
 load("./Datasets/okc.RData")
 load("./Datasets/okc_binary.RData")
 
@@ -266,11 +270,11 @@ okc_props <-
 
 The problems with this method begin when a categorical predictor has a single value and the log-odds should then be infinite (since it ranges from *-inf* to *+inf*). Generally this gets cut off at a large inaccurate value. To overcome this limit the so called *shrinkage methods* can be applied, where the overall log-odds is determined and, if the quality of the data within a factor level is poor (small sample size or, for numeric outcomes, a large variance within the data for that level), then its effect estimate can be biased towards an overall estimate that disregards the levels of the predictor. These methods can also move extreme estimates towards the middle of the distribution.
 
-## Bayesian likelihood encoding
+### Bayesian likelihood encoding
 
 There are different methods of shrinking, the most common is based on the prior distribution for the estimates, a theoretical distribution that represents the overall distribution of effects, like for example a normal distribution. Bayesian methods take the observed data and blend it with the prior distribution to come up with a posterior distribution that is a combination of the two. Also, when a new level appears after training, its effect can be estimated using the mean of the posterior distribution.
 
-```{r shrink, tidy=TRUE, include=TRUE, warning=FALSE}
+```{r shrink, tidy=TRUE, include=TRUE, warning=FALSE, eval=FALSE}
 # fit a generalized linear model and return encoding
 
 shrink_rec <- 
@@ -300,7 +304,7 @@ shrinken_sample %>% add_row(tail(shrinken, 1)) %>% pander(round=3)
 ```
 
 The shrinking effect is shown below: plot a. compares the raw with the shrunken log-odds, while plot b. shows the magnitude of the estimates (mean between raw and shrinken odds) versus the difference between the two.
-```{r plots, tidy=TRUE, warning=FALSE}
+```{r plots, tidy=TRUE, warning=FALSE, eval=FALSE}
 # plots where size of the points is Log of n. osservations
 
 odds_rng <- extendrange(c(shrinken$raw, shrinken$shrunk), f = 0.01) # log-odds range
@@ -331,12 +335,12 @@ ggpubr::ggarrange(plot_a, plot_b,
 
 One issue with effect encoding is that it increases the possibility of overfitting since the estimated effects are taken from one model and put into another model (as variables) and if these two models are based on the same data it can lead to overfitting. Also, the use of summary statistics as predictors can drastically underestimate the variation in the data.
 
-## Word embedding
+### Word embedding
 
 Another approach comes from the analysis of textual data: with *word embedding* the idea is to represent the categorical predictors as vectors and this cane be done with different algorithms in order to avoid sparsity. Once the number of new features are specified, the model takes the traditional indicators variables and randomly assigns them to one of the new features. The model then tries to optimize both the allocation of the indicators to features as well as the parameter coefficients for the features themselves. It’s common to use as a loss function the root mean squared error for numeric outcomes and cross-entropy for categorical outcomes.
 
 A neural network structure can also be used, where the encoding happens in the hidden layers. This type of model can include a set of other unrelated predictors in order to adjust and better estimate the encoding in presence of other potentially important features.
-```{r embed, tidy=TRUE, include=TRUE, warning=FALSE}
+```{r embed, tidy=TRUE, include=TRUE, warning=FALSE, eval=FALSE}
 # merge training data with the keyword indicators
 
 keywords <- names(okc_train_binary)[-1]
@@ -387,7 +391,7 @@ pander(word_embed_sample, round=3)
 
 The figure below shows the relationship between the resulting features and the raw log-odds.
 
-```{r fplot, tidy=TRUE, include=TRUE, warning=FALSE}
+```{r fplot, tidy=TRUE, include=TRUE, warning=FALSE,eval=FALSE}
 word_embed %>%
   full_join(okc_props, by = "location") %>%
   gather(feature, value, -rate, -raw, -n, -location) %>% 
@@ -400,28 +404,28 @@ word_embed %>%
   scale_size(range = c(.1, 6)) +
 ```
 
-### Encoding of ordered data
+## Encoding of ordered data
 
 Some categorical data can be ordered. One example of ordered categorical data, can be a review with values that are like "bad", "normal" and "good". In this case "bad" should have a different meaning with respect to the "good" case during the training of a model, and we should not only indicate the presence of the value "good" or "bad". 
 
-## How to encode ordered categorical data
+### How to encode ordered categorical data
 
 Ordered categorical data can have a different type of relationship between the values: for example the values can have a linear relationship or a quadratic relationship. We must encode these data with the right relationship in order to let the model understand this type of relationship. The encoding used to maintain this type of relationship is called _Polynomial Contrast_. A contrast has the characteristic that is a single comparison(one degree of freedom) and the sum of the coefficients is equal to zero.
 Polynomial contrast is useful, because it can represent linear relations, but also non linear shapes too: for example we can make a quadratic polynomial contrast, cubic polynomial contrast, etc. Polynomial constrast is also useful because it can be done on data with any number of ordered factors; the only "drawback" is that the complexity of the contrast can be, at most, equal to the number of categories of the predictor minus one: for example, if our ordered categorical predictor have three different levels, we can make only a linear and quadratic polynomial contrast. We can use _polynomial contrast_ to investigate multiple relationships at the same time by including them in the same model, for example both linear and quadratic polynomial contrast.
 
-## Drawbacks 
+### Drawbacks 
 
 A drawback of the polynomial contrast is that it may not relate directly the predictor to the response: for example, in the case where two levels of the categorical ordered predictor are very close, like in the case of "low" and "middle", polynomial contrast does not encode well this situation and does not have particular effective response in modeling the predictor's trend.
 Another drawback happens when we have a high number of different C categories: Because we can make at most $C-1$ degree polynomial contrast, if the number of C categories is very high, we can have higher grade contrasts, but in practice it has be seen that polynomial contrast is usually useful up to the quadratic polynomial contrast; in this case we might want to limit the maximum polynomial degree of the contrasts.
 
-## Alternatives
+### Alternatives
 
 Some alternatives to polynomial contrast are:
 
 #. Treat the predictors as unordered factors. This can be useful if the pattern of the categorical data is not polynomial, but if the underlying patter is linear or quadratic, unordered dummy variables may not uncover this trend.
 #. Manually translate the categories into a set of numberic score, using domani-specific knowledge of the data.
 
-## Code
+### Code
 
 The following code illustrates how to obtain _polynomial contrast_ encoding for an ordered categorical predictor with 3 number of categories.
 
@@ -432,11 +436,11 @@ zapsmall(contr.poly(3, scores=c(-1,0,1)))
 ```
 As we can see from the results of the code the linear _polynomial contrast_ have as values -0.71, 0, 0.71 and for quadratic _polynomial contrast_ value have 0.41, -0.82, 0,41. As we can see the two set of values has sum equal to 0.
 
-### Features from text data
+## Features from text data
 
 Usually we can come around some textual data inside a dataset, for example a product description or a profile description. We need to find a way to extract some features from texts. One example can be searching for the presence of links inside the text. Like suggested in the book, we can make a new feature that indicates the presence of a link inside the profile description. This feature can be useful to be used to classify a profile, in order to predict if the profile belongs to a STEM or non-STEM person. With our testing dataset we found out that the profiles with a link in the description are 662, where 409 are STEM profiles and 253 are non stem profiles. The odds ratio of having a link in the STEM profiles is equal to 0.043, while the odds ratio of non-STEM profiles that have a link in the description is 0.026. This values makes us understand that the stem profiles that have a link in the description are 1.65 times higher than the non-STEM profiles with a link. To see if this proportion is reliable we made a confidence interval over the odds-ratio of profiles with link. The confidence interval at 95% have as lower bound 1.42 and as upper bound 1.96, in this case 1 is not included inside the interval, so we can say that this feature is not working only because of some random noise, but instead is a useful feature to distinguish profiles between STEM and non-STEM
 
-## Other features
+### Other features
 By following the previous analysis, other features can be obtained, like the presence of certain keywords, or the count itself of a specified word, the number of commas, hashtags, exclamation points, etc..
 In this case it is useful to remember that some form of preprocessing should be done when working with textual data. The preprocessing steps can consists in:
 
@@ -446,26 +450,26 @@ In this case it is useful to remember that some form of preprocessing should be 
 #. Making al the text lowercase to normalize it.
 #. Remove words that have a very low frequency.
 
-## Analysis on text features
+### Analysis on text features
 After the initial consideration about the presence of link feature and more in general of other features, we proceeded to make an analysis about the effectiveness of these features. To do so we used the different datasets, with different features inside, in order to train 4 different general linear models, in order to see how the performance is affected by the presence of different features.
-The 4 datasets sused for the training are:
+The 4 datasets used for the training are:
 
 #. Basic Ok Cupid dataset, with profile info consisting in 160 predictors, after creating dummy variables when needed.
 #. Basic Ok Cupid dataset and text features like the number of occurences of urls, commas, exclamation points, etc.
 #. Basic Ok Cupid dataset, text features and keyword features, like the presence of the "software" term in the description.
 #. Basic Ok Cupid dataset, text features, keyword features and sentiment features, like the number of sentences, number of sentences written in first or third person, etc.
 
-## Performance evaluation
+### Performance evaluation
 In order to evaluate the performances of the 4 different models, we used the area under the ROC curve. The training also performs 10-Fold cross validation in order to have more precise results. In the end the performance is calculated as the average of the 10 folds performances.
 
 ![Plot of performance measure of the 4 trained models using the different feature sets](./images/training_results_chapter5_6.png)
 As we can see from the plot showing the performances, adding the simple text features to the dataset improves the area under the ROC courve by a little, while adding the keywords features greatly improves the performances. Adding the sentiment analysis features, on the other hand, decreases the performance with respect to the model trained with only the simple text features and keywords features.
 
-## Other considerations
+### Other considerations
 
 Another way of extracting text features can be the implementation of tf-idf statistics to identify important words: this statistic measures the grade of importance of a word inside its context, so if is more present locally it is considered more important, and inside the global context of documents, so if a word is rare among all documents its importance is considered bigger. The good thing of tf-idf is that it can consider not only single words, but n-grams, and this could lead to find more useful features inside our textual data.
 
-## Code
+### Code
 The following code contains the analysis made on the odds ratio of the presence of link feature and the training and comparison of the 4 models with different feature sets.
 ```{r}
 library(epitools)
@@ -566,19 +570,6 @@ okc_control_rand = okc_train_control
 okc_control_rand$search = "random"
 
 set.seed(49)
-
-#multi_layer_perceptron_keyword = train(
-#  keyword_normalization,
-#  data = okc_train,
-#  method = "mlpKerasDropout",
-#  metric= "ROC",
-#  tuneLength = 20,
-#  trControl=okc_control_rand,
-#  verbose = 0,
-#  epochs = 500
-#)
-
-
 
 #Model with basic profile info
 
@@ -698,20 +689,686 @@ ggplot(data = subset(full_df, Resample != 'Average'),aes(x=Features, y=ROC, colo
 ```
 
 
-### Factors versus Dummies
+## Factors versus Dummies
 
 Does it matter how the predictors are encoded? A series of experiments was conducted, using the "carEvaluation" dataset to answer this question. 75% of the data was used as training set and a 10-folds cross-validation was applied. Two different models (Bosted 5.0 Rules and Random Forest) were fit to the data in their original form and to the dummy variables, both ordered and unordered.
 
+### Accuracy evaluation
+
 For each model, performance metrics were estimated using resampling as well as the total time to train and tune the model.
-We compared them using AUC and accuracy. The plot below shows that, based on accuracy metric, the factor encodings are better than unordered dummy variables: this may be due to the fact that the dataset has 4 classes and all the predictors are categorical. Instead, no differences are basically visible in the case of ordered dummy variables.
+We compared them using AUC and accuracy. The plot below shows that, based on accuracy metric and for the Boosted C5.0 Rules model, the factor encodings are better than unordered dummy variables: this may be due to the fact that the dataset has 4 classes and all the predictors are categorical. Instead, no differences are basically visible in the case of ordered dummy variables.
 
-```{r}
+![Plot of the accuracy of the Boosted C5.0 Rules Model using factors or dummies, ordered and unordered](./images/accuracy_bar_boosted.png)
+For the Random Forest Model, using accuracy as measure, we saw that there is a strong difference when using unordered dummies and factor, where the factor encoded predictor have a higher value of accuracy. Instead, if the predictor is ordered, the dummy enconding performs a little better than the ordered factors predictor. It is important to say, that in every case the accuracy is very high, all above 90%, so the differences are not too big.
+![Plot of the accuracy of the Random Forest Model using factors or dummies, ordered and unordered](./images/Accuracy_Bar_Random_forest.png)
 
-## plot
+### Time evaluation
 
+As we can see from the bar plot, the time spent on training the Boosted C5.0 Rules model, using factor encoding lead to a speedup of the training process. We must remember that the training time for this model is generally low, so the difference is in terms of a few seconds.
+
+![Plot of the training time of the Boosted C5.0 Model using factors or dummies, ordered and unordered](./images/time_bar_boosted.png)
+For the Random forest model, we can see from the plot of the results that in the case of factor encoding, the training time is significally faster, where the training time is almost half as the time of the models using dummies. This difference for this type of model is very important and it should be considered when choosing which type of encoding to use for this model
+![Plot of the training time of the Random Forest using factors or dummies, ordered and unordered](./images/time_bar_random_forest.png)
+
+In conclusion, after these experiments, it is possible to say that, in this particular case, it is better to use predictors without converting them to dummy variables.
+
+### Code
+In this section there is the code used to perform this analysis, includin the model training and plotting of results.
+## Dummy
+
+### Boosted C5.0
+```{r eval=FALSE}
+
+library(caret)
+library(C50)
+library(pROC)
+# library(randomUniformForest)
+seed = 50
+carEvaluation=read.csv("car.data")
+colnames(carEvaluation)=c("buying","maint","doors","persons","lug_boot","safety","class")
+#training control with cross validation
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+#Partition dataset into training and test
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+#training of the model
+mod <- train(class ~ ., data = training, 
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+#Getting results
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+test_res <- multiClassSummary(data=test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+result <- multiclass.roc(test_pred$pred, predictor=test_pred$acc)
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_dummy_", seed, ".RData")))
+```
+### Random Forest
+
+```{r, eval=FALSE}
+library(caret)
+library(ranger)
+library(pROC)
+library(randomUniformForest)
+
+###################################################################
+
+seed <- 50
+
+read.csv("car.data")
+
+#Creating training control with cross validation
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+#Create training and test partition
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+#training of random forest model
+mod <- train(class ~ ., data = training, 
+             method = "ranger",
+             tuneLength = 10, 
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500,
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+#Getting results
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Dummy Variables"
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("Random_Forest_dummy_", seed, ".RData")))
 ```
 
-As initially said, the training time of the model was also calculated and we observed that the speed-up of using factors is in general higher and this happened because extending the number of predictors (by generating dummies) requires more computational time than using factor levels.
+##Factors
 
-In conclusion, after these experiments, it is possible to say that it is better to use predictors without converting them to dummy variables.
+### Boosted C5.0 Rules
 
+```{r, eval=FALSE}
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+
+seed <- 50
+
+read.csv("car.data")
+
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Factor Variables"
+test_res$Time <- mod$times$everything[3]
+
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Factor Variables"
+result <- multiclass.roc(test_pred$pred, predictor=test_pred$acc)
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_factor_", seed, ".RData")))
+```
+### Random Forest
+
+```{r, eval=FALSE}
+
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+
+seed <- 50
+
+read.csv("car.data")
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "ranger",
+             tuneLength = 10,
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500,
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- factor(testing$class)
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "None"
+test_res$Seed <- seed
+test_res$Encoding <- "Factor Variables"
+test_res$Time <- mod$times$everything[3]
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "None"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Factor Variables"
+
+imp <- varImp(mod, scale = FALSE)$importance
+imp$Data <- "Car Evaluation"
+imp$Model <- "Random Forest"
+imp$Seed <- seed
+imp$Variable  <- rownames(imp)
+
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("Random_Forest_factor_", seed, ".RData")))
+```
+
+## Ordered factors
+
+### Boosted C5.0 Rules
+
+```{r, eval=FALSE}
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+
+seed <- 50
+
+data(carEvaluation)
+#Creating ordered encodings
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+#Creating training control with cross validation
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+#Creating training and test partitions 
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+#Model training
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+#Getting results
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Factors"
+test_res$Time <- mod$times$everything[3]
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Factors"
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_ordered_", seed, ".RData")))
+```
+### Random Forest
+```{r, eval=FALSE}
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+seed <- 50
+
+data(carEvaluation)
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(x = training[, names(training) != "class"], 
+             y = training$class,
+             method = "ranger",
+             tuneLength = 10,
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500,
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Factors"
+test_res$Time <- mod$times$everything[3]
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Factors"
+
+imp <- varImp(mod, scale = FALSE)$importance
+imp$Data <- "Car Evaluation"
+imp$Model <- "Random Forest"
+imp$Seed <- seed
+imp$Variable  <- rownames(imp)
+
+save(test_res, rs_res, imp,
+     file = file.path("./", "Salvataggi",
+                      paste0("rf_ordered_", seed, ".RData")))
+```
+## Orderd dummy
+
+### Boosted C5.0 Rules
+
+```{r, eval=FALSE}
+
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+seed <- 50
+
+data(carEvaluation)
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(class ~ ., data = training, 
+             method = "C5.0",
+             tuneGrid = data.frame(trials = c(1:20, 10*(3:10)),
+                                   model = "rules",
+                                   winnow = FALSE),
+             metric = "logLoss",
+             trControl = ctrl)
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Boosted C5.0 Rules"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Boosted C5.0 Rules"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Dummy Variables"
+
+save(test_res, rs_res,
+     file = file.path("./", "Salvataggi",
+                      paste0("C5boostrules_ordereddummy_", seed, ".RData")))
+```
+### Random Forest
+```{r, eval=FALSE}
+
+library(caret)
+library(C50)
+library(pROC)
+library(randomUniformForest)
+
+seed <- 50
+
+data(carEvaluation)
+carEvaluation$buying <- ordered(as.character(carEvaluation$buying),
+                                levels = c("low", "med", "high", "vhigh"))
+carEvaluation$priceOfMaintenance <- ordered(as.character(carEvaluation$priceOfMaintenance),
+                                            levels = c("low", "med", "high", "vhigh"))
+carEvaluation$safety <- ordered(as.character(carEvaluation$safety),
+                                levels = c("low", "med", "high"))
+carEvaluation$nbDoors <- ordered(as.character(carEvaluation$nbDoors),
+                                 levels = c("2", "3", "4", "5more"))
+carEvaluation$nbPersons <- ordered(as.character(carEvaluation$nbPersons),
+                                   levels = c("2","4","more"))
+carEvaluation$luggageBoot <- ordered(as.character(carEvaluation$luggageBoot),
+                                     levels = c("small","med","big"))
+
+ctrl <- trainControl(method = "cv", 
+                     classProbs = TRUE,
+                     summaryFunction = multiClassSummary)
+
+set.seed(seed)
+in_train <- createDataPartition(carEvaluation$class, p = 3/4, list = FALSE)
+training <- carEvaluation[ in_train, ]
+testing  <- carEvaluation[-in_train, ]
+
+mod <- train(class ~ ., data = training, 
+             method = "ranger",
+             tuneLength = 10,
+             verbose = FALSE, 
+             seed = seed + 1,
+             num.threads = 1,
+             num.trees = 1500, 
+             importance = "impurity",
+             metric = "logLoss",
+             trControl = ctrl)
+
+test_pred <- predict(mod, testing, type = "prob")
+test_pred$pred <- predict(mod, testing)
+test_pred$obs <- testing$class
+
+test_res <- multiClassSummary(test_pred, lev = levels(test_pred$obs))
+test_res <- data.frame(t(test_res))
+test_res$Data <- "Car Evaluation"
+test_res$Model <- "Random Forest"
+test_res$Ordered <- "Yes"
+test_res$Seed <- seed
+test_res$Encoding <- "Ordered Dummy Variables"
+test_res$Time <- mod$times$everything[3]
+
+rs_res <- mod$resample
+rs_res$Data <- "Car Evaluation"
+rs_res$Model <- "Random Forest"
+rs_res$Ordered <- "Yes"
+rs_res$Seed <- seed
+rs_res$Encoding <- "Ordered Dummy Variables"
+
+imp <- varImp(mod, scale = FALSE)$importance
+imp$Data <- "Car Evaluation"
+imp$Model <- "Random Forest"
+imp$Seed <- seed
+imp$Variable  <- rownames(imp)
+
+save(test_res, rs_res, imp,
+     file = file.path("./", "Salvataggi",
+                      paste0("rf_ordereddummy_", seed, ".RData")))
+
+```
+## Plot data
+
+```{r, eval=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#Getting the data
+rdata_files <- list.files("Salvataggi", 
+                          pattern = "RData$",
+                          full.names = TRUE)
+
+test_results <- vector(mode = "list", length = length(rdata_files))
+rs_results <- test_results
+
+
+
+for (i in seq_along(rdata_files)) {
+  load(rdata_files[i])
+  test_results[[i]] <- test_res
+  rs_results[[i]] <- rs_res
+  rm(test_res, rs_res)
+}
+
+test_results <- bind_rows(test_results) %>%
+  arrange(Model, Seed, Encoding)
+rs_results <-  bind_rows(rs_results)
+
+table(test_results$Model, test_results$Encoding)
+
+
+#Merging al results
+factor_results <- test_results %>%
+  filter(Encoding == "Factor Variables") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Factors, logLoss:Mean_Balanced_Accuracy, Time)
+
+dummy_results <- test_results %>%
+  filter(Encoding == "Dummy Variables") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Dummies, logLoss:Mean_Balanced_Accuracy, Time)
+
+ordered_results <- test_results %>%
+  filter(Encoding == "Ordered Factors") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Ordered, logLoss:Mean_Balanced_Accuracy, Time)
+
+ordereddummy_results <- test_results %>%
+  filter(Encoding == "Ordered Dummy Variables") %>%
+  select(-Encoding, -Ordered) %>%
+  gather(Metric, Ordered_Dummy, logLoss:Mean_Balanced_Accuracy, Time)
+
+merged_results <- full_join(factor_results, dummy_results) %>%
+  full_join(ordered_results) %>%
+  full_join(ordereddummy_results) 
+
+# Models accuracy plots
+final_frame =  merged_results %>%
+    filter(Metric == "Accuracy") %>%
+    filter(Model == "Boosted C5.0 Rules") 
+
+final_frame = final_frame[c(5:8)]
+test = c(final_frame[1], final_frame[2], final_frame[3], final_frame[4])
+accuracy = final_frame[1:4]
+types = colnames((final_frame))
+final =  data.frame(t(final_frame))
+final$names = rownames(final)
+
+if(interactive()) {
+  
+    ggplot(final, aes(x=names, y=t.final_frame.)) + 
+  geom_bar(stat = "identity")+coord_cartesian(ylim=c(0.9, 1))
+}
+
+final_frame =  merged_results %>%
+    filter(Metric == "Accuracy") %>%
+    filter(Model == "Random Forest") 
+final_frame = final_frame[c(5:8)]
+test = c(final_frame[1], final_frame[2], final_frame[3], final_frame[4])
+accuracy = final_frame[1:4]
+types = colnames((final_frame))
+final =  data.frame(t(final_frame))
+final$names = rownames(final)
+
+if(interactive()) {
+  
+    ggplot(final, aes(x=names, y=t.final_frame.)) + 
+  geom_bar(stat = "identity")+coord_cartesian(ylim=c(0.9, 1))
+}
+
+#Models training time plots
+final_frame =  merged_results %>%
+    filter(Metric == "Time") %>%
+    filter(Model == "Boosted C5.0 Rules") 
+final_frame = final_frame[c(5:8)]
+test = c(final_frame[1], final_frame[2], final_frame[3], final_frame[4])
+accuracy = final_frame[1:4]
+types = colnames((final_frame))
+final =  data.frame(t(final_frame))
+final$names = rownames(final)
+
+if(interactive()) {
+  
+    ggplot(final, aes(x=names, y=t.final_frame.)) + 
+  geom_bar(stat = "identity")
+}
+final_frame =  merged_results %>%
+    filter(Metric == "Time") %>%
+    filter(Model == "Random Forest") 
+final_frame = final_frame[c(5:8)]
+test = c(final_frame[1], final_frame[2], final_frame[3], final_frame[4])
+accuracy = final_frame[1:4]
+types = colnames((final_frame))
+final =  data.frame(t(final_frame))
+final$names = rownames(final)
+
+if(interactive()) {
+  
+    ggplot(final, aes(x=names, y=t.final_frame.)) + 
+  geom_bar(stat = "identity")
+}
+save(merged_results, file = "Car_Evaluation.RData")
+```
