@@ -73,7 +73,7 @@ The process of hashing features is:
 #. Calculate the new feature value, if we want 16 different values we calculate _(hashValue mod 16) +1_
 
 Some considerations needs to be done: because of the nature of the hashing functions, sometimes we will have collisions. Collisions occurs when two different values has different hashing. In statistics this is an aliasing problem. A way to solve this problem consists into using signed hashes, so instead of only 0 and 1 values for dummy variables, we can also have -1 value in order to reduce aliasing. To see if this method is effectively useful, we made a simulation consisting in a test predictor containing $10^4$ different categories, where each category is a random 20 characters string. We created different hash mappings of different sizes, and for each hash of specified size we created the signed and unsigned version, and we calculated the collision rates of both versions. Finally we made this simulation for 10 times and averaged all the results. Using a line plot we can see that the signed version of each hash has lower collision rates than the unsigned versions.
-![Table of encoded days of week using 6 dummy variables](./images/collisionRates.png)
+![Plot of the hash collisions simulation](./images/collisionRates.png)
 
 
 ### Problems of feature hashing
@@ -315,7 +315,7 @@ shrinken_sample$location <- str_replace_all(shrinken_sample$location, "_", " ")
 shrinken_sample %>% add_row(tail(shrinken, 1)) %>% pander(round=3)
 ```
 
-The shrinking effect is shown below: plot a. compares the raw with the shrunken log-odds, while plot b. shows the magnitude of the estimates (mean between raw and shrinken odds) versus the difference between the two.
+The shrinking effect is shown below:
 ```{r plots, warning=FALSE, eval=FALSE}
 # plots where size of the points is Log of n. osservations
 
@@ -344,7 +344,7 @@ plot_b <-
 ggpubr::ggarrange(plot_a, plot_b,
                   labels=c("a.","b."))
 ```
-![Plot of the magnitude of the estimates (mean between raw and shrinken odds) versus the difference between the two.](./images/logoddsComparison.png)
+![Plot a. compares the raw with the shrunken log-odds; plot b. shows the magnitude of the estimates (mean between raw and shrinken odds) versus the difference between the two.](./images/logoddsComparison.png)
 
 One issue with effect encoding is that it increases the possibility of overfitting since the estimated effects are taken from one model and put into another model and if these two models are based on the same data it can lead to overfitting. Also, the use of summary statistics as predictors can drastically underestimate the variation in the data.
 
@@ -445,7 +445,8 @@ Some alternatives to polynomial contrast are:
 The following code illustrates how to obtain _polynomial contrast_ encoding for an ordered categorical predictor with 3 number of categories.
 
 ```{r eval=TRUE}
-# Linear and quadratic polynomial contrasts are generated, the scores -1,0,1 can be seen as "bad", "medium" and "good" categories
+# Linear and quadratic polynomial contrasts are generated,
+# the scores -1,0,1 can be seen as "bad", "medium" and "good" categories
 zapsmall(contr.poly(3, scores=c(-1,0,1)))
 
 ```
@@ -477,7 +478,7 @@ The 4 datasets used for the training are:
 ### Performance evaluation
 In order to evaluate the performances of the 4 different models, we used the area under the ROC curve. The training also performs 10-Fold cross validation in order to have more precise results. In the end the performance is calculated as the average of the 10 folds performances.
 
-### Cross validaiton
+### Cross validation
 
 In order to have more precise results, we decided to use cross validation to train the models. Cross validation consists in splitting the data into k number of folds: for training are used $k-1$ folds, and the one fold left out is used to test the performance. Every fold is used for training and for testing. For every training performed we save the results, and in the end we make an average of the results. This can lead to better performance estimation, because the training is done on all the data after all the training step, and all the data is used for testing after all the testing step.
 ![Plot of performance measure of the 4 trained models using the different feature sets](./images/training_results_chapter5_6.png)
