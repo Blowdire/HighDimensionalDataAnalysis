@@ -29,9 +29,9 @@ output:
 knit: reprex::reprex_render
 ---
 # Encoding Categorical Predictors
-Agazzi Ruben 844736 <br />
-Davide Dell'Orto 828873 <br />
-Hellem Carrasco 805840 <br />
+Agazzi Ruben 844736\
+Davide Dell'Orto 828873\
+Hellem Carrasco 805840\
 
 ## Abstract
 
@@ -49,7 +49,7 @@ The most basic approach used for handling unordered categorical data consists in
 ### Code
 
 This piece of code shows a way of encoding the seven days of weeks into 6 dummy variables
-```{r}
+```{r eval=FALSE}
 library(tidymodels)
 library(FeatureHashing)
 library(stringr)
@@ -57,7 +57,7 @@ library('fastDummies')
 days_of_week <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday","Friday", "Saturday")
 test_df <- data.frame(days_of_week)
 test_df <- dummy_cols(test_df, select_columns = c('days_of_week'))
-test_df = test_df[-c(5)]
+test_df <- test_df[-c(5)]
 ```
 ![Table of encoded days of week using 6 dummy variables](./images/dummy_days_of_week_2.png)
 
@@ -104,7 +104,8 @@ towns_to_sample <- c(
 )
 
 # Sampled locations from "where_town" column
-locations_sampled <- okc_train %>% dplyr::select(where_town) %>% distinct(where_town) %>% arrange(where_town)
+locations_sampled <- okc_train %>% dplyr::select(where_town) %>%
+distinct(where_town) %>% arrange(where_town)
 
 hashes <- hashed.model.matrix(
   ~ where_town,
@@ -117,8 +118,13 @@ hashes <- hashed.model.matrix(
 hash_mapping = hash.mapping(hashes)
 names(hash_mapping) = str_remove(names(hash_mapping), 'where_town')
 
-# Takes hash mapping, converts to dataframe, set new columns names, calculate hash over name to have original integer value, filter for selected cities 
-binary_calcs = hash_mapping %>% enframe() %>% set_names(c('town', 'column_num_16')) %>% mutate(integer_16 = hashed.value(names(hash_mapping))) %>% dplyr::filter(town %in% towns_to_sample) %>% arrange(town)
+# Takes hash mapping, converts to dataframe, set new columns names,
+# calculate hash over name to have original integer value,
+# filter for selected cities 
+binary_calcs = hash_mapping %>% enframe() %>%
+set_names(c('town', 'column_num_16')) %>%
+mutate(integer_16 = hashed.value(names(hash_mapping))) %>%
+dplyr::filter(town %in% towns_to_sample) %>% arrange(town)
 
 hashes_df = hashes %>% 
   as.matrix() %>%
@@ -156,7 +162,8 @@ library(stringr)
 library(stringi)
 # Generate a test predictor with 10000 different categories
 
-# Function used to calculate hash mapping collision rate, it can be specified an hash size and if the hash should be signed or not
+# Function used to calculate hash mapping collision rate,
+# it can be specified an hash size and if the hash should be signed or not
 getHash_collision_percentage <- function(dataframe, signed, size){
   #Create hases
   hashes <- hashed.model.matrix(~fake_predictor,
@@ -200,20 +207,26 @@ for (iteration_number in 1:10) {
   signed_32768 = getHash_collision_percentage(test_df, TRUE, 2^15)
   
   #Add row with results to final dataframe
-  result_df = rbind(result_df, c(unsigned_2048, signed_2048, unsigned_4096, signed_4096, unsigned_8192, signed_8192, unsigned_16384, signed_16384, unsigned_32768, signed_32768, iteration_number))
+  result_df = rbind(result_df, c(unsigned_2048, signed_2048, unsigned_4096,
+  signed_4096, unsigned_8192, signed_8192, unsigned_16384, signed_16384,
+  unsigned_32768, signed_32768, iteration_number))
 }
 #Make average of simulation results
 averaged_results = colMeans(result_df)
 average_df = data.frame(averaged_results)
 average_df_filtered <- data.frame(average_df[c(-11),])
-rownames(average_df_filtered) <- c("unsigned_2048","signed_2048", "unsigned_4096", "signed_4096","unsigned_8192", "signed_8192", "unsigned_16384", "signed_16384", "unsigned_32768", "signed_32768")
+rownames(average_df_filtered) <- c("unsigned_2048","signed_2048", "unsigned_4096",
+"signed_4096","unsigned_8192", "signed_8192", "unsigned_16384", "signed_16384",
+"unsigned_32768", "signed_32768")
 average_df_filtered$signed = c(FALSE,TRUE,FALSE,TRUE,FALSE,TRUE,FALSE,TRUE,FALSE,TRUE)
 average_df_filtered$hashSize = c(2048,2048, 4096, 4096,8192, 8192, 16384, 16384, 32768, 32768)
 final_df <- as_tibble(average_df_filtered) %>% rename(CollisionRate = average_df.c..11....)
 library(ggplot2)
 
 #Plot of the results
-ggplot(data = final_df,aes(x=hashSize, y=CollisionRate))+ geom_line(aes( colour=signed, group=signed)) + geom_point(aes( colour=signed, group=signed))
+ggplot(data = final_df,aes(x=hashSize, y=CollisionRate))+
+geom_line(aes( colour=signed, group=signed)) +
+geom_point(aes( colour=signed, group=signed))
 
 ```
 
@@ -235,7 +248,7 @@ When new levels appear after training or when predictors have many possible valu
 The first type consists of measuring the effect on the outcome by calculating a statistic for the categorical predictors and using this to represent the factor levels in the model. For example we can calculate the odds which is the ratio between two rates of occurrence (probabilities of complementary events), p and (1-p). A model like a logistic regression can then model the log-odds (*ln* of odds) as a function of the predictors. If a single categorical predictor is included in the model, then the log-odds can be calculated for each predictor value and can be used this as the encoding.
 
 
-```{r library, results="hide", message=FALSE, warning=FALSE}
+```{r eval=FALSE, library, results="hide", message=FALSE, warning=FALSE}
 library(tidyverse)
 library(dplyr)
 library(embed)
@@ -244,7 +257,7 @@ library(gridExtra)
 library(pander) # for table layout
 ```
 
-```{r odds, tidy=TRUE, include=TRUE, warning=FALSE, eval=FALSE}
+```{r odds include=TRUE, warning=FALSE, eval=FALSE}
 load("./Datasets/okc.RData")
 load("./Datasets/okc_binary.RData")
 
@@ -390,7 +403,7 @@ pander(word_embed_sample, round=3)
 
 The figure below shows the relationship between the resulting features and the raw log-odds.
 
-```{r fplot, include=TRUE, warning=FALSE,eval=FALSE}
+```{r fplot, include=TRUE, warning=FALSE, eval=FALSE}
 word_embed %>%
   full_join(okc_props, by = "location") %>%
   gather(feature, value, -rate, -raw, -n, -location) %>% 
@@ -513,7 +526,8 @@ load("./Datasets/okc_other.RData")
 load("./Datasets/okc_binary.RData")
 load("./Datasets/okc_features.RData")
 
-# joining all pre-computed features data sets: joins basic dataset, binary dataset and basic precomputed features.
+# joining all pre-computed features data sets: joins basic dataset,
+# binary dataset and basic precomputed features.
 okc_train = okc_train %>% full_join(okc_train_binary) %>%full_join(basic_features_train) %>% arrange(profile) %>% dplyr::select(-profile)
 
 # Selecting pre-computed textual features names.
