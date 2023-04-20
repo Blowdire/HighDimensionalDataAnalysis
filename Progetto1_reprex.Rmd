@@ -257,7 +257,7 @@ library(gridExtra)
 library(pander) # for table layout
 ```
 
-```{r odds include=TRUE, warning=FALSE, eval=FALSE}
+```{r odds, include=TRUE, warning=FALSE, eval=FALSE}
 load("./Datasets/okc.RData")
 load("./Datasets/okc_binary.RData")
 
@@ -344,6 +344,7 @@ plot_b <-
 ggpubr::ggarrange(plot_a, plot_b,
                   labels=c("a.","b."))
 ```
+![Plot of the magnitude of the estimates (mean between raw and shrinken odds) versus the difference between the two.](./images/logoddsComparison.png)
 
 One issue with effect encoding is that it increases the possibility of overfitting since the estimated effects are taken from one model and put into another model and if these two models are based on the same data it can lead to overfitting. Also, the use of summary statistics as predictors can drastically underestimate the variation in the data.
 
@@ -402,6 +403,8 @@ pander(word_embed_sample, round=3)
 ```
 
 The figure below shows the relationship between the resulting features and the raw log-odds.
+
+![Plot of the relationship between the resulting features and the raw log-odds](./images/featuresOdds.png)
 
 ```{r fplot, include=TRUE, warning=FALSE, eval=FALSE}
 word_embed %>%
