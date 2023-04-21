@@ -5,4 +5,4 @@ by Kuhn and Johnson.
 
 The final project is under the name of Progetto1_reprex basically in Markdown or PDF format.\
 "Images" folder contains plots and some tables;\
-"Data" folder contains all the datasets used;\
+"Data" folder contains all the datasets used;
