@@ -3,6 +3,6 @@
 This work is based on Chapter 5 "Encoding categorical predictors" of "Feature Engineering and Selection: A Practical Approach for Predictive Models"
 by Kuhn and Johnson.
 
-The final project is under the name of Progetto1_reprex basically in Markdown or PDF format.
-"Images" folder contains plots and some tables;
-"Data" folder contains all the datasets used;
+The final project is under the name of Progetto1_reprex basically in Markdown or PDF format.\\
+"Images" folder contains plots and some tables;\\
+"Data" folder contains all the datasets used;\\
