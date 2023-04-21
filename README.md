@@ -5,6 +5,6 @@ by Kuhn and Johnson.
 
 The final project is under the name of Progetto1_reprex basically in Markdown or PDF format.
 
-"Images" folder contains plots and some tables;\
+"Images" folder contains the project's plots;\
 "Datasets" contains all the datasets used;\
 "Salvataggi" contains the models used in Chapter 5.7
