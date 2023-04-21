@@ -7,4 +7,4 @@ The final project is under the name of Progetto1_reprex basically in Markdown or
 
 "Images" folder contains the project's plots;\
 "Datasets" contains all the datasets used;\
-"Salvataggi" contains the models used in Chapter 5.7
+"Salvataggi" contains the models trained in Chapter 5.7
